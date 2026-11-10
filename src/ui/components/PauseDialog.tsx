@@ -8,7 +8,7 @@ interface PauseDialogProps {
   onCloseShop: () => void;
 }
 
-/** Covers the open screen while the clock is stopped. */
+/** Covers the game while the clock is stopped. */
 export function PauseDialog({ onResume, onCloseShop }: PauseDialogProps) {
   const dialog = useRef<HTMLDivElement>(null);
 

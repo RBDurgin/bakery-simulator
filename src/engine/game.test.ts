@@ -1,206 +1,359 @@
 import { describe, expect, it } from 'vitest';
 import { BALANCE } from '../content/balance';
 import { RECIPES } from '../content/recipes';
-import { newGame, openGame, play } from '../test/fixtures';
-import { applyAction, tick } from './game';
+import {
+  arrive,
+  at,
+  customer,
+  eveningGame,
+  goTo,
+  newGame,
+  openGame,
+  play,
+  stallGame,
+  tapCustomer,
+  tapThing,
+} from '../test/fixtures';
+import { tick } from './game';
 import { profit } from './selectors';
-import type { Customer, GameState } from './state';
+import type { GameState } from './state';
 
-const customer = (id: number, wants: Customer['wants'], waitedMs = 0): Customer => ({
-  id,
-  wants,
-  waitedMs,
+const bake = (state: GameState, recipeId: keyof typeof RECIPES) =>
+  play(goTo(state, 'oven'), { type: 'startBaking', recipeId });
+
+describe('tapping to walk', () => {
+  it('sends the baker walking and clears the old message', () => {
+    const game = tapThing(openGame({ message: { id: 'shelf' } }), 'till');
+    expect(game.baker.walk).toMatchObject({ to: 'counter', goal: { kind: 'thing', id: 'till' } });
+    expect(game.message).toBeNull();
+  });
+
+  it('does the job on arriving, not before', () => {
+    const walking = tapThing(openGame({ ...at('bakery', 'till') }), 'shelf');
+    expect(walking.message).toBeNull();
+    expect(arrive(walking).message).toEqual({ id: 'shelf' });
+  });
+
+  it('does the job straight away when the baker is already there', () => {
+    const game = tapThing(openGame(), 'shelf');
+    expect(game.baker.walk).toBeNull();
+    expect(game.message).toEqual({ id: 'shelf' });
+  });
+
+  it('tapping somewhere else changes the plan', () => {
+    const toTill = tick(tapThing(openGame({ ...at('bakery', 'oven') }), 'till'), 100);
+    const toOven = arrive(tapThing(toTill, 'oven'));
+    expect(toOven.baker).toEqual({ place: 'bakery', spot: 'oven', walk: null });
+    // The oven job was done, the till job was not.
+    expect(toOven.panel).toEqual({ type: 'oven' });
+  });
+
+  it('ignores things that are not in this place', () => {
+    const game = newGame();
+    expect(tapThing(game, 'oven')).toBe(game);
+    expect(tapThing(game, 'nothing')).toBe(game);
+  });
+
+  it('ignores taps while a panel is open', () => {
+    const game = stallGame('flour');
+    expect(tapThing(game, 'sugar')).toBe(game);
+  });
+
+  it('walks in the morning and evening too, when the shop clock is stopped', () => {
+    const morning = goTo(newGame(), 'door');
+    expect(morning.baker).toEqual({ place: 'street', spot: 'home', walk: null });
+    expect(morning.clockMs).toBe(0);
+  });
+});
+
+describe('doors', () => {
+  it('lead to the next place and say where the baker is', () => {
+    let game = goTo(newGame(), 'door');
+    expect(game.message).toEqual({ id: 'arrived', place: 'street' });
+    game = goTo(game, 'market');
+    expect(game.baker).toEqual({ place: 'market', spot: 'exit', walk: null });
+    game = goTo(goTo(game, 'exit'), 'bakery');
+    expect(game.baker).toEqual({ place: 'bakery', spot: 'door', walk: null });
+    expect(game.message).toEqual({ id: 'arrived', place: 'bakery' });
+  });
+
+  it('keep the baker in the bakery while the shop is open', () => {
+    const game = goTo(openGame(), 'door');
+    expect(game.baker.place).toBe('bakery');
+    expect(game.message).toEqual({ id: 'stayInShop' });
+  });
+
+  it('keep the baker in the bakery until the till is counted', () => {
+    const stuck = goTo(eveningGame(), 'door');
+    expect(stuck.baker.place).toBe('bakery');
+    expect(stuck.message).toEqual({ id: 'countTillFirst' });
+
+    const free = goTo(eveningGame({ tillCounted: true }), 'door');
+    expect(free.baker.place).toBe('street');
+  });
 });
 
 describe('buying ingredients', () => {
+  const buy = (ingredientId: 'flour' | 'butter', quantity?: number) =>
+    ({ type: 'buyIngredient', ingredientId, quantity }) as const;
+
+  it('a stall opens its panel in the morning', () => {
+    const game = goTo(newGame(at('market', 'exit')), 'butter');
+    expect(game.panel).toEqual({ type: 'stall', ingredientId: 'butter' });
+    expect(game.baker.spot).toBe('butter');
+  });
+
+  it('a stall is closed for the rest of the day', () => {
+    const game = goTo(eveningGame({ ...at('market', 'exit'), tillCounted: true }), 'butter');
+    expect(game.panel).toBeNull();
+    expect(game.message).toEqual({ id: 'stallClosed' });
+  });
+
   it('takes the money, adds the stock and counts the spending', () => {
-    const game = play(newGame(), { type: 'buyIngredient', ingredientId: 'butter' });
+    const game = play(stallGame('butter'), buy('butter'));
     expect(game.money).toBe(BALANCE.startingMoney - 200);
     expect(game.ingredients.butter).toBe(1);
     expect(game.today.spent).toBe(200);
   });
 
   it('can buy several at once', () => {
-    const game = play(newGame(), { type: 'buyIngredient', ingredientId: 'flour', quantity: 3 });
+    const game = play(stallGame('flour'), buy('flour', 3));
     expect(game.ingredients.flour).toBe(3);
     expect(game.today.spent).toBe(300);
   });
 
   it('refuses when there is not enough money', () => {
-    const poor = newGame({ money: 199 });
-    expect(play(poor, { type: 'buyIngredient', ingredientId: 'butter' })).toBe(poor);
+    const poor = stallGame('butter', { money: 199 });
+    expect(play(poor, buy('butter'))).toBe(poor);
   });
 
   it('allows spending the very last cent', () => {
-    const game = play(newGame({ money: 200 }), { type: 'buyIngredient', ingredientId: 'butter' });
-    expect(game.money).toBe(0);
+    expect(play(stallGame('butter', { money: 200 }), buy('butter')).money).toBe(0);
   });
 
   it.each([0, -1, 1.5])('refuses a quantity of %d', (quantity) => {
-    const game = newGame();
-    expect(play(game, { type: 'buyIngredient', ingredientId: 'flour', quantity })).toBe(game);
+    const game = stallGame('flour');
+    expect(play(game, buy('flour', quantity))).toBe(game);
   });
 
-  it('is only possible in the morning', () => {
-    const game = openGame();
-    expect(play(game, { type: 'buyIngredient', ingredientId: 'flour' })).toBe(game);
+  it('is only possible at the stall that sells it', () => {
+    const away = newGame(at('market', 'flour'));
+    expect(play(away, buy('flour'))).toBe(away);
+    const wrongStall = stallGame('butter');
+    expect(play(wrongStall, buy('flour'))).toBe(wrongStall);
+  });
+
+  it('closing the panel keeps the baker at the stall', () => {
+    const game = play(stallGame('flour'), { type: 'closePanel' });
+    expect(game.panel).toBeNull();
+    expect(game.baker.spot).toBe('flour');
+    expect(play(game, { type: 'closePanel' })).toBe(game);
   });
 });
 
-describe('day phases', () => {
-  it('opens the shop from the morning and sets up the first customer', () => {
-    const game = play(newGame(), { type: 'openShop' });
+describe('the sign', () => {
+  const stocked = { ingredients: { flour: 1, sugar: 1, butter: 1, egg: 0 } };
+
+  it('opens the shop and sets up the first customer', () => {
+    const game = tapThing(newGame({ ...at('bakery', 'door'), ...stocked }), 'sign');
     expect(game.phase).toBe('open');
     expect(game.clockMs).toBe(0);
     expect(game.nextCustomerInMs).toBe(BALANCE.firstCustomerDelayMs);
+    expect(game.message).toEqual({ id: 'shopOpened' });
   });
 
-  it('ignores actions that belong to another phase', () => {
-    const morning = newGame();
-    for (const type of ['takeOut', 'pause', 'resume', 'closeShop', 'nextDay'] as const) {
-      expect(play(morning, { type })).toBe(morning);
-    }
-    expect(play(morning, { type: 'startBaking', recipeId: 'cookie' })).toBe(morning);
-    expect(play(morning, { type: 'serveCustomer', customerId: 1 })).toBe(morning);
-
-    const open = openGame();
-    expect(play(open, { type: 'openShop' })).toBe(open);
-    expect(play(open, { type: 'nextDay' })).toBe(open);
+  it('asks first when there is nothing to bake, then opens anyway', () => {
+    const asked = tapThing(newGame(at('bakery', 'door')), 'sign');
+    expect(asked.phase).toBe('morning');
+    expect(asked.message).toEqual({ id: 'nothingToBake' });
+    expect(tapThing(asked, 'sign').phase).toBe('open');
   });
 
-  it('closing the shop goes to the evening and wastes what is left', () => {
-    const game = openGame({
-      shelf: { cookie: 3, muffin: 0, bread: 1 },
-      oven: { status: 'baking', recipeId: 'muffin', elapsedMs: 1000 },
-      customers: [customer(1, 'bread')],
+  it('asks again after the baker has walked away', () => {
+    const asked = tapThing(newGame(at('bakery', 'door')), 'sign');
+    const back = goTo(goTo(asked, 'shelf'), 'sign');
+    expect(back.phase).toBe('morning');
+    expect(back.message).toEqual({ id: 'nothingToBake' });
+  });
+
+  it('only tells the time of day once the shop has opened', () => {
+    expect(goTo(openGame(), 'sign')).toMatchObject({
+      phase: 'open',
+      message: { id: 'shopIsOpen' },
     });
-    const evening = play(game, { type: 'closeShop' });
-    expect(evening.phase).toBe('evening');
-    expect(evening.today.wasted).toEqual({ cookie: 3, muffin: RECIPES.muffin.batchSize, bread: 1 });
-    expect(evening.shelf).toEqual({ cookie: 0, muffin: 0, bread: 0 });
-    expect(evening.oven).toEqual({ status: 'empty' });
-    expect(evening.customers).toEqual([]);
-    // Customers still waiting at closing time are not counted as lost.
-    expect(evening.today.lostCustomers).toBe(0);
-    expect(evening.reputation).toBe(game.reputation);
-  });
-
-  it('the next day starts a fresh morning but keeps money, ingredients and stars', () => {
-    const evening: GameState = {
-      ...play(openGame({ money: 1234, reputation: 61 }), { type: 'closeShop' }),
-    };
-    const morning = play(evening, { type: 'nextDay' });
-    expect(morning).toMatchObject({ phase: 'morning', day: 2, money: 1234, reputation: 61 });
-    expect(morning.ingredients).toEqual(evening.ingredients);
-    expect(morning.today).toMatchObject({ income: 0, spent: 0 });
+    expect(goTo(eveningGame(), 'sign')).toMatchObject({
+      phase: 'evening',
+      message: { id: 'shopClosed' },
+    });
   });
 });
 
-describe('baking', () => {
-  it('uses up the ingredients and fills the oven', () => {
-    const game = play(openGame(), { type: 'startBaking', recipeId: 'bread' });
-    expect(game.ingredients).toEqual({ flour: 8, sugar: 10, butter: 10, egg: 9 });
-    expect(game.oven).toEqual({ status: 'baking', recipeId: 'bread', elapsedMs: 0 });
-  });
-
-  it('needs every ingredient', () => {
-    const game = openGame({ ingredients: { flour: 1, sugar: 1, butter: 0, egg: 0 } });
+describe('the oven', () => {
+  it('is cold until the shop opens', () => {
+    const game = goTo(newGame(at('bakery', 'door')), 'oven');
+    expect(game.panel).toBeNull();
+    expect(game.message).toEqual({ id: 'ovenCold' });
     expect(play(game, { type: 'startBaking', recipeId: 'cookie' })).toBe(game);
   });
 
-  it('only one batch fits in the oven', () => {
-    const game = play(openGame(), { type: 'startBaking', recipeId: 'cookie' });
-    expect(play(game, { type: 'startBaking', recipeId: 'muffin' })).toBe(game);
+  it('offers what to bake when it is empty', () => {
+    expect(goTo(openGame(), 'oven').panel).toEqual({ type: 'oven' });
   });
 
-  it('cannot take a batch out before it is ready', () => {
-    const game = tick(play(openGame(), { type: 'startBaking', recipeId: 'cookie' }), 1000);
-    expect(play(game, { type: 'takeOut' })).toBe(game);
+  it('baking uses up the ingredients, fills the oven and closes the panel', () => {
+    const game = bake(openGame(), 'bread');
+    expect(game.ingredients).toEqual({ flour: 8, sugar: 10, butter: 10, egg: 9 });
+    expect(game.oven).toEqual({ status: 'baking', recipeId: 'bread', elapsedMs: 0 });
+    expect(game.panel).toBeNull();
+    expect(game.message).toEqual({ id: 'bakingStarted', recipeId: 'bread' });
+  });
+
+  it('baking needs every ingredient', () => {
+    const game = goTo(openGame({ ingredients: { flour: 1, sugar: 1, butter: 0, egg: 0 } }), 'oven');
+    expect(play(game, { type: 'startBaking', recipeId: 'cookie' })).toBe(game);
+  });
+
+  it('baking needs the baker at the oven', () => {
+    const game = openGame();
+    expect(play(game, { type: 'startBaking', recipeId: 'cookie' })).toBe(game);
+  });
+
+  it('says what is baking, and leaves it in, before it is ready', () => {
+    const baking = tick(bake(openGame(), 'cookie'), 1000);
+    const game = tapThing(baking, 'oven');
+    expect(game.oven).toEqual(baking.oven);
+    expect(game.panel).toBeNull();
+    expect(game.message).toEqual({ id: 'ovenBaking', recipeId: 'cookie' });
   });
 
   it('a ready batch goes onto the shelf', () => {
-    const baking = play(openGame({ nextCustomerInMs: 1e9 }), {
-      type: 'startBaking',
-      recipeId: 'cookie',
-    });
-    const game = play(tick(baking, RECIPES.cookie.bakeMs), { type: 'takeOut' });
+    const game = tapThing(tick(bake(openGame(), 'cookie'), RECIPES.cookie.bakeMs), 'oven');
     expect(game.shelf.cookie).toBe(RECIPES.cookie.batchSize);
     expect(game.oven).toEqual({ status: 'empty' });
     expect(game.today.wasted.cookie).toBe(0);
+    expect(game.message).toEqual({ id: 'tookOut', recipeId: 'cookie' });
   });
 
   it('a burnt batch is wasted', () => {
-    const baking = play(openGame({ nextCustomerInMs: 1e9 }), {
-      type: 'startBaking',
-      recipeId: 'cookie',
-    });
-    const burnt = tick(baking, RECIPES.cookie.bakeMs + BALANCE.burnWindowMs);
-    const game = play(burnt, { type: 'takeOut' });
+    const burnt = tick(bake(openGame(), 'cookie'), RECIPES.cookie.bakeMs + BALANCE.burnWindowMs);
+    const game = tapThing(burnt, 'oven');
     expect(game.shelf.cookie).toBe(0);
     expect(game.oven).toEqual({ status: 'empty' });
     expect(game.today.wasted.cookie).toBe(RECIPES.cookie.batchSize);
+    expect(game.message).toEqual({ id: 'burnt', recipeId: 'cookie' });
   });
 
-  it('there is nothing to take out of an empty oven', () => {
-    const game = openGame();
-    expect(play(game, { type: 'takeOut' })).toBe(game);
+  it('the clock stops while the baker picks what to bake', () => {
+    const picking = goTo(openGame(), 'oven');
+    expect(tick(picking, 5000)).toBe(picking);
+    const closed = play(picking, { type: 'closePanel' });
+    expect(tick(closed, 1000).clockMs).toBe(picking.clockMs + 1000);
+  });
+
+  it('walking to the oven is time away from the counter', () => {
+    const game = goTo(openGame({ ...at('bakery', 'till') }), 'oven');
+    expect(game.clockMs).toBeGreaterThan(1000);
   });
 });
 
 describe('serving customers', () => {
-  const waiting = () =>
+  const waiting = (overrides: Partial<GameState> = {}) =>
     openGame({
+      ...at('bakery', 'counter'),
       shelf: { cookie: 2, muffin: 0, bread: 0 },
-      customers: [customer(1, 'cookie'), customer(2, 'muffin')],
+      customers: [customer(1, 'muffin'), customer(2, 'cookie')],
+      ...overrides,
     });
 
   it('sells one item, earns its price and makes the customer happy', () => {
     const before = waiting();
-    const game = play(before, { type: 'serveCustomer', customerId: 1 });
+    const game = tapCustomer(before, 2);
     expect(game.money).toBe(before.money + RECIPES.cookie.price);
     expect(game.shelf.cookie).toBe(1);
-    expect(game.customers.map((c) => c.id)).toEqual([2]);
+    expect(game.customers.map((c) => c.id)).toEqual([1]);
     expect(game.today).toMatchObject({ income: RECIPES.cookie.price, happyCustomers: 1 });
     expect(game.today.sold.cookie).toBe(1);
     expect(game.reputation).toBe(before.reputation + BALANCE.reputationPerHappyCustomer);
+    expect(game.message).toEqual({ id: 'served', recipeId: 'cookie' });
+  });
+
+  it('the baker walks to the counter first', () => {
+    const walking = tapCustomer(waiting(at('bakery', 'oven')), 2);
+    expect(walking.customers).toHaveLength(2);
+    const game = arrive(walking);
+    expect(game.baker.spot).toBe('counter');
+    expect(game.customers.map((c) => c.id)).toEqual([1]);
   });
 
   it('cannot serve what is not on the shelf', () => {
-    const game = waiting();
-    expect(play(game, { type: 'serveCustomer', customerId: 2 })).toBe(game);
+    const game = tapCustomer(waiting(), 1);
+    expect(game.customers).toHaveLength(2);
+    expect(game.money).toBe(BALANCE.startingMoney);
+    expect(game.message).toEqual({ id: 'noStock', recipeId: 'muffin' });
   });
 
   it('ignores a customer who is not there', () => {
     const game = waiting();
-    expect(play(game, { type: 'serveCustomer', customerId: 99 })).toBe(game);
+    expect(tapCustomer(game, 99)).toBe(game);
+  });
+
+  it('is kind when the customer leaves while the baker is on the way', () => {
+    const before = waiting({
+      ...at('bakery', 'oven'),
+      customers: [customer(1, 'cookie', BALANCE.customerPatienceMs - 100)],
+    });
+    const game = arrive(tapCustomer(before, 1));
+    expect(game.customers).toEqual([]);
+    expect(game.today.lostCustomers).toBe(1);
+    expect(game.message).toEqual({ id: 'customerGone' });
+  });
+
+  it('the counter serves the customer who has waited longest and can be served', () => {
+    const game = tapThing(waiting(), 'counter');
+    expect(game.customers.map((c) => c.id)).toEqual([1]);
+    expect(game.message).toEqual({ id: 'served', recipeId: 'cookie' });
+  });
+
+  it('the counter says what is missing when nobody can be served', () => {
+    const game = tapThing(waiting({ shelf: { cookie: 0, muffin: 0, bread: 0 } }), 'counter');
+    expect(game.customers).toHaveLength(2);
+    expect(game.message).toEqual({ id: 'noStock', recipeId: 'muffin' });
+  });
+
+  it('the counter says when nobody is waiting, or the shop is shut', () => {
+    expect(tapThing(waiting({ customers: [] }), 'counter').message).toEqual({
+      id: 'nobodyWaiting',
+    });
+    expect(goTo(eveningGame(), 'counter').message).toEqual({ id: 'counterClosed' });
   });
 
   it('reputation never goes above the maximum', () => {
-    const game = play(
-      { ...waiting(), reputation: BALANCE.reputationMax },
-      { type: 'serveCustomer', customerId: 1 },
-    );
+    const game = tapCustomer(waiting({ reputation: BALANCE.reputationMax }), 2);
     expect(game.reputation).toBe(BALANCE.reputationMax);
   });
 });
 
 describe('pause', () => {
-  it('stops the clock and blocks baking and serving until resumed', () => {
-    const paused = play(
-      openGame({ shelf: { cookie: 1, muffin: 0, bread: 0 }, customers: [customer(1, 'cookie')] }),
-      { type: 'pause' },
-    );
+  it('stops the clock and the baker until resumed', () => {
+    const walking = tapThing(openGame(), 'till');
+    const paused = play(walking, { type: 'pause' });
     expect(paused.paused).toBe(true);
     expect(tick(paused, 5000)).toBe(paused);
     expect(play(paused, { type: 'pause' })).toBe(paused);
-    expect(play(paused, { type: 'startBaking', recipeId: 'cookie' })).toBe(paused);
-    expect(play(paused, { type: 'serveCustomer', customerId: 1 })).toBe(paused);
-    expect(play(paused, { type: 'takeOut' })).toBe(paused);
+    expect(tapThing(paused, 'oven')).toBe(paused);
+    expect(play(paused, { type: 'closePanel' })).toBe(paused);
 
     const resumed = play(paused, { type: 'resume' });
     expect(resumed.paused).toBe(false);
     expect(play(resumed, { type: 'resume' })).toBe(resumed);
     expect(tick(resumed, 1000).clockMs).toBe(1000);
+  });
+
+  it('is only for the open shop', () => {
+    const morning = newGame();
+    expect(play(morning, { type: 'pause' })).toBe(morning);
+    expect(play(morning, { type: 'resume' })).toBe(morning);
+    expect(play(morning, { type: 'closeShop' })).toBe(morning);
   });
 
   it('the shop can be closed from the pause screen', () => {
@@ -210,8 +363,66 @@ describe('pause', () => {
   });
 });
 
+describe('closing and the evening', () => {
+  it('closing the shop goes to the evening and wastes what is left', () => {
+    const game = openGame({
+      shelf: { cookie: 3, muffin: 0, bread: 1 },
+      oven: { status: 'baking', recipeId: 'muffin', elapsedMs: 1000 },
+      customers: [customer(1, 'bread')],
+      panel: { type: 'oven' },
+    });
+    const evening = play(game, { type: 'closeShop' });
+    expect(evening.phase).toBe('evening');
+    expect(evening.today.wasted).toEqual({ cookie: 3, muffin: RECIPES.muffin.batchSize, bread: 1 });
+    expect(evening.shelf).toEqual({ cookie: 0, muffin: 0, bread: 0 });
+    expect(evening.oven).toEqual({ status: 'empty' });
+    expect(evening.customers).toEqual([]);
+    expect(evening.panel).toBeNull();
+    expect(evening.message).toEqual({ id: 'closingTime' });
+    // Customers still waiting at closing time are not counted as lost.
+    expect(evening.today.lostCustomers).toBe(0);
+    expect(evening.reputation).toBe(game.reputation);
+  });
+
+  it('the till is for the evening', () => {
+    expect(goTo(openGame(), 'till')).toMatchObject({ panel: null, message: { id: 'tillLater' } });
+  });
+
+  it('counting the till opens the report, and closing it sends the baker home', () => {
+    const counted = goTo(eveningGame(), 'till');
+    expect(counted.panel).toEqual({ type: 'report' });
+    expect(counted.tillCounted).toBe(true);
+    const done = play(counted, { type: 'closePanel' });
+    expect(done.panel).toBeNull();
+    expect(done.message).toEqual({ id: 'goHome' });
+  });
+
+  it('the bed is for the evening', () => {
+    const game = tapThing(newGame(), 'bed');
+    expect(game).toMatchObject({ phase: 'morning', day: 1, message: { id: 'notBedtime' } });
+  });
+
+  it('going to bed starts a fresh morning but keeps money, ingredients and stars', () => {
+    const evening = eveningGame({
+      ...at('home', 'door'),
+      money: 1234,
+      reputation: 61,
+      tillCounted: true,
+      ingredients: { flour: 2, sugar: 0, butter: 1, egg: 0 },
+      today: { ...newGame().today, income: 900, spent: 400 },
+    });
+    const morning = goTo(evening, 'bed');
+    expect(morning).toMatchObject({ phase: 'morning', day: 2, money: 1234, reputation: 61 });
+    expect(morning.ingredients).toEqual(evening.ingredients);
+    expect(morning.today).toMatchObject({ income: 0, spent: 0 });
+    expect(morning.tillCounted).toBe(false);
+    expect(morning.baker).toEqual({ place: 'home', spot: 'bed', walk: null });
+    expect(morning.message).toEqual({ id: 'goodMorning' });
+  });
+});
+
 describe('tick', () => {
-  it('does nothing outside the open phase or for no time', () => {
+  it('does nothing when nothing is moving, or for no time', () => {
     const morning = newGame();
     expect(tick(morning, 1000)).toBe(morning);
     const open = openGame();
@@ -221,13 +432,13 @@ describe('tick', () => {
   });
 
   it('moves the clock and the oven forward', () => {
-    const game = tick(play(openGame(), { type: 'startBaking', recipeId: 'bread' }), 1500);
-    expect(game.clockMs).toBe(1500);
+    const game = tick(bake(openGame(), 'bread'), 1500);
     expect(game.oven).toMatchObject({ elapsedMs: 1500 });
   });
 
   it('brings the first customer after the opening delay', () => {
-    const before = tick(openGame(), BALANCE.firstCustomerDelayMs - 1);
+    const opened = tapThing(newGame(at('bakery', 'door')), 'sign');
+    const before = tick(tapThing(opened, 'sign'), BALANCE.firstCustomerDelayMs - 1);
     expect(before.customers).toEqual([]);
     const after = tick(before, 1);
     expect(after.customers).toHaveLength(1);
@@ -237,9 +448,19 @@ describe('tick', () => {
   });
 
   it('gives the same day whether time passes in one step or many', () => {
-    const big = tick(openGame(), 60_000);
-    let small = openGame();
+    const start = tapThing(openGame({ nextCustomerInMs: 1 }), 'till');
+    const big = tick(start, 60_000);
+    let small = start;
     for (let i = 0; i < 600; i++) small = tick(small, 100);
+    expect(small).toEqual(big);
+  });
+
+  it('gives the same result when a walk ends in a panel part of the way through a tick', () => {
+    const start = tapThing(openGame({ ...at('bakery', 'till'), nextCustomerInMs: 1 }), 'oven');
+    const big = tick(start, 30_000);
+    let small = start;
+    for (let i = 0; i < 3000; i++) small = tick(small, 10);
+    expect(big.panel).toEqual({ type: 'oven' });
     expect(small).toEqual(big);
   });
 
@@ -254,7 +475,6 @@ describe('tick', () => {
   it('customers who wait too long leave, and that costs reputation', () => {
     const game = tick(
       openGame({
-        nextCustomerInMs: 1e9,
         customers: [
           customer(1, 'cookie', BALANCE.customerPatienceMs - 1000),
           customer(2, 'bread', 0),
@@ -269,11 +489,7 @@ describe('tick', () => {
 
   it('reputation never drops below zero', () => {
     const game = tick(
-      openGame({
-        reputation: 1,
-        nextCustomerInMs: 1e9,
-        customers: [customer(1, 'cookie', BALANCE.customerPatienceMs)],
-      }),
+      openGame({ reputation: 1, customers: [customer(1, 'cookie', BALANCE.customerPatienceMs)] }),
       1,
     );
     expect(game.reputation).toBe(0);
@@ -300,34 +516,57 @@ describe('tick', () => {
   });
 
   it('closes the shop when the day is over', () => {
-    const game = tick(openGame({ shelf: { cookie: 2, muffin: 0, bread: 0 } }), 10 * 60_000);
+    const game = tick(
+      openGame({ shelf: { cookie: 2, muffin: 0, bread: 0 }, nextCustomerInMs: 1 }),
+      10 * 60_000,
+    );
     expect(game.phase).toBe('evening');
     expect(game.clockMs).toBe(BALANCE.dayLengthMs);
     expect(game.today.wasted.cookie).toBe(2);
     expect(game.today.lostCustomers).toBeGreaterThan(0);
   });
+
+  it('a baker who is walking at closing time finishes the walk', () => {
+    const walking = tapThing(
+      openGame({ ...at('bakery', 'oven'), clockMs: BALANCE.dayLengthMs - 100 }),
+      'till',
+    );
+    const game = tick(walking, 10_000);
+    expect(game.phase).toBe('evening');
+    expect(game.clockMs).toBe(BALANCE.dayLengthMs);
+    expect(game.baker).toEqual({ place: 'bakery', spot: 'till', walk: null });
+    // The job was done in the evening, so the till was counted.
+    expect(game.panel).toEqual({ type: 'report' });
+  });
 });
 
 describe('a whole day', () => {
-  it('adds up to the right profit', () => {
-    let game = play(
-      newGame(),
-      { type: 'buyIngredient', ingredientId: 'flour' },
-      { type: 'buyIngredient', ingredientId: 'sugar' },
-      { type: 'buyIngredient', ingredientId: 'butter' },
-      { type: 'openShop' },
-      { type: 'startBaking', recipeId: 'cookie' },
-    );
-    game = play(tick(game, RECIPES.cookie.bakeMs), { type: 'takeOut' });
+  it('adds up to the right profit, from waking up to going back to bed', () => {
+    const buy = (state: GameState, ingredientId: 'flour' | 'sugar' | 'butter') =>
+      play(
+        goTo(state, ingredientId),
+        { type: 'buyIngredient', ingredientId },
+        { type: 'closePanel' },
+      );
+
+    // Morning: out of the house, to the market, then to the bakery.
+    let game = goTo(goTo(newGame({ rng: 42 }), 'door'), 'market');
+    game = buy(buy(buy(game, 'flour'), 'sugar'), 'butter');
+    game = goTo(goTo(goTo(game, 'exit'), 'bakery'), 'sign');
+    expect(game.phase).toBe('open');
+
+    game = bake(game, 'cookie');
+    while (game.oven.status === 'baking' && game.oven.elapsedMs < RECIPES.cookie.bakeMs) {
+      game = tick(game, 100);
+    }
+    game = goTo(game, 'oven');
     expect(game.shelf.cookie).toBe(6);
 
     // Serve every cookie customer who turns up for the rest of the day.
     while (game.phase === 'open') {
       game = tick(game, 500);
-      for (const c of game.customers) {
-        if (c.wants === 'cookie')
-          game = applyAction(game, { type: 'serveCustomer', customerId: c.id });
-      }
+      const wantsCookie = game.customers.find((c) => c.wants === 'cookie');
+      if (wantsCookie && !game.baker.walk) game = tapCustomer(game, wantsCookie.id);
     }
 
     const sold = game.today.sold.cookie;
@@ -337,10 +576,19 @@ describe('a whole day', () => {
     expect(game.today.wasted.cookie).toBe(6 - sold);
     expect(profit(game)).toBe(sold * 150 - 400);
     expect(game.money).toBe(BALANCE.startingMoney + profit(game));
+
+    // Evening: count the till, walk home, go to bed.
+    game = play(goTo(game, 'till'), { type: 'closePanel' });
+    game = goTo(goTo(goTo(game, 'door'), 'home'), 'bed');
+    expect(game).toMatchObject({ phase: 'morning', day: 2 });
+    expect(game.money).toBe(BALANCE.startingMoney + sold * 150 - 400);
   });
 
   it('seed 42 sends the customers the Playwright journey expects', () => {
-    const game = tick(openGame({ rng: 42 }), 40_000);
+    const game = tick(
+      openGame({ rng: 42, nextCustomerInMs: BALANCE.firstCustomerDelayMs }),
+      40_000,
+    );
     expect(game.customers.map((c) => c.wants)).toMatchInlineSnapshot(`
       [
         "muffin",

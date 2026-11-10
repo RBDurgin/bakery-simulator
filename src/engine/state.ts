@@ -1,5 +1,7 @@
 import { BALANCE } from '../content/balance';
 import { INGREDIENT_IDS, type IngredientId } from '../content/ingredients';
+import { DEFAULT_BAKER_LOOK, isBakerLook, type BakerLook } from '../content/looks';
+import { WAKE_UP, type PlaceId } from '../content/places';
 import { RECIPE_IDS, type RecipeId } from '../content/recipes';
 import type { Cents } from './money';
 
@@ -24,9 +26,63 @@ export interface DayStats {
   lostCustomers: number;
 }
 
+/** What the player tapped: a thing in the baker's place, or a waiting customer. */
+export type Target = { kind: 'thing'; id: string } | { kind: 'customer'; id: number };
+
+/** A walk in progress, from the baker's spot towards the next one. */
+export interface Walk {
+  /** The spot the baker is walking to right now. */
+  to: string;
+  /** Time spent on the way from the baker's spot to `to`. */
+  elapsedMs: number;
+  /** The spots to pass after `to`, ending where the job is. */
+  then: string[];
+  /** What the baker will do on arriving. */
+  goal: Target;
+}
+
+export interface Baker {
+  place: PlaceId;
+  /** The spot the baker stands on, or the one just left while walking. */
+  spot: string;
+  walk: Walk | null;
+}
+
+/** A menu panel, open at the place where its job is done. The clock stops while one is open. */
+export type Panel =
+  { type: 'stall'; ingredientId: IngredientId } | { type: 'oven' } | { type: 'report' };
+
+/** What just happened, for the UI to put into words. */
+export type Message =
+  | { id: 'goodMorning' }
+  | { id: 'arrived'; place: PlaceId }
+  | { id: 'stallClosed' }
+  | { id: 'nothingToBake' }
+  | { id: 'shopOpened' }
+  | { id: 'shopIsOpen' }
+  | { id: 'shopClosed' }
+  | { id: 'stayInShop' }
+  | { id: 'ovenCold' }
+  | { id: 'bakingStarted'; recipeId: RecipeId }
+  | { id: 'ovenBaking'; recipeId: RecipeId }
+  | { id: 'tookOut'; recipeId: RecipeId }
+  | { id: 'burnt'; recipeId: RecipeId }
+  | { id: 'shelf' }
+  | { id: 'counterClosed' }
+  | { id: 'nobodyWaiting' }
+  | { id: 'served'; recipeId: RecipeId }
+  | { id: 'noStock'; recipeId: RecipeId }
+  | { id: 'customerGone' }
+  | { id: 'closingTime' }
+  | { id: 'tillLater' }
+  | { id: 'countTillFirst' }
+  | { id: 'goHome' }
+  | { id: 'notBedtime' };
+
 export interface GameState {
   bakeryName: string;
   playerName: string;
+  bakerLook: BakerLook;
   day: number;
   phase: Phase;
   money: Cents;
@@ -45,12 +101,19 @@ export interface GameState {
   clockMs: number;
   paused: boolean;
   today: DayStats;
+  /** Where the baker is, and any walk in progress. */
+  baker: Baker;
+  panel: Panel | null;
+  message: Message | null;
+  /** True once the till has been counted this evening. */
+  tillCounted: boolean;
 }
 
 export interface NewGameOptions {
   seed: number;
   bakeryName?: string;
   playerName?: string;
+  bakerLook?: string;
 }
 
 export const DEFAULT_BAKERY_NAME = 'Sunny Bakery';
@@ -81,6 +144,7 @@ export function createGame(options: NewGameOptions): GameState {
   return {
     bakeryName: cleanName(options.bakeryName, DEFAULT_BAKERY_NAME),
     playerName: cleanName(options.playerName, DEFAULT_PLAYER_NAME),
+    bakerLook: isBakerLook(options.bakerLook) ? options.bakerLook : DEFAULT_BAKER_LOOK,
     day: 1,
     phase: 'morning',
     money: BALANCE.startingMoney,
@@ -95,5 +159,9 @@ export function createGame(options: NewGameOptions): GameState {
     clockMs: 0,
     paused: false,
     today: emptyDayStats(),
+    baker: { ...WAKE_UP, walk: null },
+    panel: null,
+    message: { id: 'goodMorning' },
+    tillCounted: false,
   };
 }

@@ -2,8 +2,9 @@ import { useEffect } from 'react';
 import { useGameStore } from '../../store/gameStore';
 
 /**
- * Drives the engine clock from animation frames while `running` is true. The
- * game pauses itself when the browser tab is hidden.
+ * Drives the engine from animation frames while `running` is true: walking
+ * in every phase, and the shop clock while the shop is open. The game pauses
+ * itself when the browser tab is hidden.
  */
 export function useGameClock(running: boolean) {
   useEffect(() => {

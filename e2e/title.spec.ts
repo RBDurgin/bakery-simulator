@@ -41,7 +41,21 @@ test.describe('title and new game', () => {
   test('the names the player picks appear on the shop sign and the greeting', async ({ page }) => {
     await startNewGame(page, { bakery: 'Bun Fun', player: 'Ada' });
     await expect(page.getByTestId('bakery-name')).toContainText('Bun Fun');
-    await expect(page.getByRole('heading', { name: 'Good morning, Ada!' })).toBeVisible();
+    await expect(page.getByTestId('message')).toContainText('Good morning, Ada!');
+    await expect(page.getByRole('img', { name: 'Ada, the baker' })).toBeVisible();
+  });
+
+  test('the look the player picks is the baker in the world', async ({ page }) => {
+    await page.getByTestId('start-button').click();
+    const look = page.getByTestId('look-baker-3');
+    await look.click();
+    await expect(look.getByRole('radio')).toBeChecked();
+    const face = (await look.textContent()) ?? '';
+    expect(face.trim()).not.toBe('');
+    await expectNoA11yViolations(page);
+
+    await page.getByTestId('open-bakery-button').click();
+    await expect(page.getByTestId('baker')).toHaveText(face);
   });
 
   test('a very long name is cut to the limit and does not break the layout', async ({ page }) => {

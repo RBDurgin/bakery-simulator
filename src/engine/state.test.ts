@@ -17,6 +17,11 @@ describe('createGame', () => {
       shelf: { cookie: 0, muffin: 0, bread: 0 },
       oven: { status: 'empty' },
       customers: [],
+      bakerLook: 'baker-1',
+      baker: { place: 'home', spot: 'bed', walk: null },
+      panel: null,
+      message: { id: 'goodMorning' },
+      tillCounted: false,
     });
     expect(game.today).toMatchObject({ income: 0, spent: 0, happyCustomers: 0, lostCustomers: 0 });
   });
@@ -25,6 +30,13 @@ describe('createGame', () => {
     const game = createGame({ seed: 1, bakeryName: '   ', playerName: undefined });
     expect(game.bakeryName).toBe(DEFAULT_BAKERY_NAME);
     expect(game.playerName).toBe(DEFAULT_PLAYER_NAME);
+  });
+});
+
+describe('the baker look', () => {
+  it('keeps a look the player picked and replaces one that does not exist', () => {
+    expect(createGame({ seed: 1, bakerLook: 'baker-3' }).bakerLook).toBe('baker-3');
+    expect(createGame({ seed: 1, bakerLook: 'dragon' }).bakerLook).toBe('baker-1');
   });
 });
 
