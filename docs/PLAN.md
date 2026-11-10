@@ -17,6 +17,11 @@ off phases as they are finished.
 | Art | Emoji and CSS first, behind an asset layer so real art can replace it later. |
 | Layout | Mobile-first. Phone portrait is the primary target; tablet and desktop scale up. |
 | Themes | Baking, budgeting, management. |
+| Name | The game is "Bakery Simulator". The player names their bakery and their character. |
+| End goal | Open-ended for now: no final win condition, the bakery keeps growing. |
+| Language | English only. Text still lives in content files, not scattered through components. |
+| Hosting | Vercel (most likely). |
+| Narration | Optional, using the browser's built-in speech. Off by default; see 2.5. |
 
 ## 2. Game design
 
@@ -106,6 +111,11 @@ new thing, and each unlock triggers its tutorial. Planned order:
 - Every tutorial can be skipped and replayed later from a Help book.
 - Which tutorials have been seen is stored in the save.
 - Text aims at a reading level for age 8, at most two short sentences a step.
+- Optional "read aloud" setting uses the browser's built-in speech (the Web
+  Speech API) to speak tutorial text. It needs no audio files and adds almost
+  no download size, because tutorials are already text data. Voice quality
+  varies by device, and the button is hidden where speech is not available.
+  Recorded voice-over is out of scope unless we decide otherwise later.
 
 ### 2.6 Kid-friendly rules
 
@@ -232,8 +242,10 @@ and desktop, axe check on the title screen.
   and are served, pause.
 - [ ] **1.4 Evening report.** Income, costs, profit, sold and wasted items;
   continue to the next day.
-- [ ] **1.5 Title and new game flow.** Title screen, new game, basic
-  reputation stars.
+- [ ] **1.5 Title and new game flow.** Title screen, new game where the
+  player names their bakery and character (with friendly defaults and a
+  length limit), basic reputation stars. The names appear on the shop sign,
+  in reports, and in tutorial text.
 
 *Tests:* unit tests for every engine rule; component tests per screen; e2e
 journey "play one full day and see the correct profit" using a fixed seed.
@@ -256,6 +268,8 @@ continue", "three slots stay separate", and one day on each difficulty.
 - [ ] **3.1 Tutorial engine.** Step data format, highlighting, skip, progress
   stored in the save.
 - [ ] **3.2 First-day tutorial.** Guided first day with the guide character.
+- [ ] **3.4 Read aloud.** Optional setting that speaks tutorial text using
+  the browser's built-in speech.
 - [ ] **3.3 Unlock hooks and Help book.** Tutorials start on unlock events;
   replay any seen tutorial from Help.
 
@@ -310,18 +324,16 @@ dead-end bugs; e2e journeys for a special order and for hiring a helper.
   save export and import.
 - [ ] **7.4 Quality pass.** Full accessibility review, performance check
   against the budget, balance tuning from playtests with children.
-- [ ] **7.5 Release.** Deploy (GitHub Pages or similar) from CI.
+- [ ] **7.5 Release.** Deploy to Vercel, with preview deployments for pull
+  requests.
 
 *Tests:* offline e2e test, export/import round-trip test, full visual
 screenshot set, complete regression run on all Playwright projects.
 
 ## 5. Open questions
 
-These do not block Phase 0 or 1 and can be settled as we reach them.
+None at the moment. Things to revisit later:
 
-1. Game name and the guide character (name, animal or person).
-2. Should there be an end goal (for example "earn the Golden Whisk"), or is
-   the game open-ended?
-3. Languages: English only, or built ready for translation from the start?
-4. Where the game will be hosted.
-5. Whether to add spoken narration for tutorials.
+1. Whether to add an end goal once the open-ended game is fun.
+2. Whether browser speech is good enough for read aloud, or recorded
+   voice-over is worth the extra work.
