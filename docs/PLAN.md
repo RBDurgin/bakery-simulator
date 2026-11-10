@@ -220,17 +220,30 @@ A phase or sub-phase is finished only when all of these hold:
 
 ### Phase 0 — Foundation
 
-- [ ] **0.1 Project setup.** Vite + React + TypeScript, ESLint, Prettier,
+- [x] **0.1 Project setup.** Vite + React + TypeScript, ESLint, Prettier,
   folder structure, npm scripts.
-- [ ] **0.2 Test setup.** Vitest with coverage thresholds, React Testing
+- [x] **0.2 Test setup.** Vitest with coverage thresholds, React Testing
   Library, Playwright with the three projects, axe checks, one smoke test of
   each kind.
-- [ ] **0.3 CI.** GitHub Actions workflow for lint, types, tests, build, e2e.
-- [ ] **0.4 App shell.** Mobile-first layout, theme variables, asset layer,
+- [x] **0.3 CI.** GitHub Actions workflow for lint, types, tests, build, e2e.
+- [x] **0.4 App shell.** Mobile-first layout, theme variables, asset layer,
   title screen placeholder.
 
 *Tests:* smoke unit test, smoke e2e test that loads the title screen on phone
 and desktop, axe check on the title screen.
+
+*Done.* Notes from building it:
+
+- TypeScript is pinned to 6.0.x because typescript-eslint does not support
+  TypeScript 7 yet. Revisit when it does.
+- `@playwright/test` is pinned to an exact version, and an npm override keeps
+  `@axe-core/playwright` on the same `playwright-core`.
+- Zustand is added in Phase 1, when there is state to hold.
+- Visual screenshot tests start once real screens exist (Phase 1), so the
+  baselines are worth keeping.
+- `src/engine/money.ts` (whole-cent formatting) is the first engine module. An
+  ESLint rule keeps `engine/` free of React, the DOM, timers, `Math.random`
+  and `Date.now`.
 
 ### Phase 1 — Core loop (first playable)
 
