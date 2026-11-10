@@ -23,6 +23,7 @@ describe('NewGameScreen', () => {
       bakeryName: DEFAULT_BAKERY_NAME,
       playerName: DEFAULT_PLAYER_NAME,
       bakerLook: 'baker-1',
+      difficulty: 'medium',
     });
   });
 
@@ -42,7 +43,7 @@ describe('NewGameScreen', () => {
 
   it('lets the player pick a look for their baker', async () => {
     render(<NewGameScreen />);
-    const looks = screen.getAllByRole('radio');
+    const looks = screen.getAllByRole('radio', { name: /Baker look/ });
     expect(looks).toHaveLength(BAKER_LOOKS.length);
     expect(screen.getByRole('radio', { name: 'Baker look 1' })).toBeChecked();
 
@@ -52,6 +53,23 @@ describe('NewGameScreen', () => {
 
     await submit();
     expect(useGameStore.getState().game?.bakerLook).toBe('baker-4');
+  });
+
+  it('offers the three difficulty modes, with Medium picked to begin with', async () => {
+    render(<NewGameScreen />);
+    expect(screen.getByRole('radio', { name: 'Medium' })).toBeChecked();
+    expect(screen.getByTestId('difficulty-easy')).toHaveTextContent('You start with $100.00.');
+    expect(screen.getByTestId('difficulty-hard')).toHaveTextContent('You start with $40.00.');
+
+    await userEvent.click(screen.getByRole('radio', { name: 'Hard' }));
+    await submit();
+    expect(useGameStore.getState().game).toMatchObject({ difficulty: 'hard', money: 4000 });
+  });
+
+  it('goes back to the save slots', async () => {
+    render(<NewGameScreen />);
+    await userEvent.click(screen.getByRole('button', { name: text.newGame.back }));
+    expect(useGameStore.getState().screen).toBe('slots');
   });
 
   it('limits how long a name can be', async () => {

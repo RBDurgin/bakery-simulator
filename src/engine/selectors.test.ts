@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { BALANCE } from '../content/balance';
 import { RECIPES } from '../content/recipes';
-import { newGame } from '../test/fixtures';
+import { MEDIUM, newGame } from '../test/fixtures';
 import { batchCost, batchesPossible, ovenStage, profit, starsFor, timeLeftMs } from './selectors';
 
 describe('ovenStage', () => {
@@ -10,14 +10,15 @@ describe('ovenStage', () => {
     [0, 'baking'],
     [bakeMs - 1, 'baking'],
     [bakeMs, 'ready'],
-    [bakeMs + BALANCE.burnWindowMs - 1, 'ready'],
-    [bakeMs + BALANCE.burnWindowMs, 'burnt'],
+    [bakeMs + MEDIUM.burnWindowMs - 1, 'ready'],
+    [bakeMs + MEDIUM.burnWindowMs, 'burnt'],
   ])('after %i ms cookies are %s', (elapsedMs, stage) => {
-    expect(ovenStage({ status: 'baking', recipeId: 'cookie', elapsedMs })).toBe(stage);
+    const oven = { status: 'baking', recipeId: 'cookie', elapsedMs } as const;
+    expect(ovenStage(newGame({ oven }))).toBe(stage);
   });
 
   it('is empty for an empty oven', () => {
-    expect(ovenStage({ status: 'empty' })).toBe('empty');
+    expect(ovenStage(newGame())).toBe('empty');
   });
 });
 

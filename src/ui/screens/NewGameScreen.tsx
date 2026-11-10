@@ -1,25 +1,36 @@
 import { useState, type FormEvent } from 'react';
 import { BALANCE } from '../../content/balance';
+import {
+  DEFAULT_DIFFICULTY,
+  DIFFICULTIES,
+  DIFFICULTY_IDS,
+  type Difficulty,
+} from '../../content/difficulty';
 import { BAKER_LOOKS, DEFAULT_BAKER_LOOK, type BakerLook } from '../../content/looks';
 import { text } from '../../content/text';
+import { formatCents } from '../../engine/money';
 import { DEFAULT_BAKERY_NAME, DEFAULT_PLAYER_NAME } from '../../engine/state';
 import { useGameStore } from '../../store/gameStore';
 import { Button } from '../components/Button';
 import { GameIcon } from '../components/GameIcon';
 import styles from './NewGameScreen.module.css';
 
-/** The player names their bakery and their character and picks a look, then the first morning starts. */
+/**
+ * The player names their bakery and their character, picks a look and how
+ * hard the game should be, and the first morning starts.
+ */
 export function NewGameScreen() {
   const startNewGame = useGameStore((store) => store.startNewGame);
   const goTo = useGameStore((store) => store.goTo);
   const [bakeryName, setBakeryName] = useState(DEFAULT_BAKERY_NAME);
   const [playerName, setPlayerName] = useState(DEFAULT_PLAYER_NAME);
   const [bakerLook, setBakerLook] = useState<BakerLook>(DEFAULT_BAKER_LOOK);
+  const [difficulty, setDifficulty] = useState<Difficulty>(DEFAULT_DIFFICULTY);
   const hint = text.newGame.nameHint(BALANCE.nameMaxLength);
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    startNewGame({ bakeryName, playerName, bakerLook });
+    startNewGame({ bakeryName, playerName, bakerLook, difficulty });
   };
 
   return (
@@ -86,13 +97,45 @@ export function NewGameScreen() {
             ))}
           </div>
         </fieldset>
+
+        <fieldset className={styles.looks}>
+          <legend className={styles.label}>{text.newGame.difficultyLegend}</legend>
+          <div className={styles.modes}>
+            {DIFFICULTY_IDS.map((id) => {
+              const mode = DIFFICULTIES[id];
+              return (
+                <label key={id} className={styles.mode} data-testid={`difficulty-${id}`}>
+                  <input
+                    type="radio"
+                    name="difficulty"
+                    className={styles.lookInput}
+                    value={id}
+                    checked={id === difficulty}
+                    aria-labelledby={`difficulty-${id}-name`}
+                    aria-describedby={`difficulty-${id}-hint`}
+                    onChange={() => setDifficulty(id)}
+                  />
+                  <GameIcon id={id} decorative size="large" />
+                  <span className={styles.modeWords}>
+                    <span id={`difficulty-${id}-name`} className={styles.label}>
+                      {mode.name}
+                    </span>
+                    <span id={`difficulty-${id}-hint`} className={styles.hint}>
+                      {mode.blurb} {text.newGame.startsWith(formatCents(mode.startingMoney))}
+                    </span>
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+        </fieldset>
       </div>
 
       <div className={styles.actions}>
         <Button type="submit" data-testid="open-bakery-button">
           {text.newGame.submit}
         </Button>
-        <Button variant="secondary" onClick={() => goTo('title')}>
+        <Button variant="secondary" onClick={() => goTo('slots')}>
           {text.newGame.back}
         </Button>
       </div>

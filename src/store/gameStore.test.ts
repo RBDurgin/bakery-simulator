@@ -25,7 +25,7 @@ describe('game store', () => {
   });
 
   it('moves between the title and new game screens', () => {
-    store().goTo('newGame');
+    store().newGameIn(2);
     expect(store().screen).toBe('newGame');
     store().goTo('title');
     expect(store().screen).toBe('title');

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { BALANCE } from '../../content/balance';
 import { PLACES } from '../../content/places';
 import { text } from '../../content/text';
@@ -7,14 +8,18 @@ import { useGameStore } from '../../store/gameStore';
 import { AppShell } from '../AppShell';
 import { Button } from '../components/Button';
 import { GameIcon } from '../components/GameIcon';
-import { PauseDialog } from '../components/PauseDialog';
+import { Dialog } from '../components/Dialog';
+import dialogStyles from '../components/Dialog.module.css';
+import { MenuDialog } from '../components/MenuDialog';
 import { ShopSign } from '../components/ShopSign';
 import { useGameClock } from '../hooks/useGameClock';
 import { OvenPanel } from '../panels/OvenPanel';
 import { ReportPanel } from '../panels/ReportPanel';
+import { SettingsPanel } from '../panels/SettingsPanel';
 import { StallPanel } from '../panels/StallPanel';
 import { messageText } from '../scene/messageText';
 import { Scene } from '../scene/Scene';
+import { useSounds } from '../sound';
 import styles from './WorldScreen.module.css';
 
 /** Shows milliseconds as minutes and seconds, for example 2:05. */
@@ -56,18 +61,28 @@ function TimeOfDay({ game }: { game: GameState }) {
 export function WorldScreen() {
   const game = useGameStore((store) => store.game);
   const leaving = useGameStore((store) => store.leaving);
+  const saveFailed = useGameStore((store) => store.saveFailed);
   const dispatch = useGameStore((store) => store.dispatch);
-  useGameClock(game !== null && !game.paused && !game.panel);
+  const quitToTitle = useGameStore((store) => store.quitToTitle);
+  const retryDay = useGameStore((store) => store.retryDay);
+  // The menu outside shop hours. While the shop is open the engine's pause does this job.
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const stopped = game === null || game.paused || game.panel !== null || game.ended || menuOpen;
+  useGameClock(!stopped);
+  useSounds(game);
 
   if (!game) return null;
   const place = PLACES[game.baker.place];
   const { panel } = game;
+  const shopOpen = game.phase === 'open';
+  const menuShown = (game.paused || menuOpen) && !game.ended;
 
   return (
     <AppShell>
       <div
         className={styles.world}
-        inert={game.paused || panel !== null}
+        inert={stopped}
         data-testid="world"
         data-phase={game.phase}
         data-place={place.id}
@@ -84,7 +99,7 @@ export function WorldScreen() {
           <p className={styles.message} role="status" data-testid="message">
             {messageText(game)}
           </p>
-          {game.phase === 'open' ? (
+          {shopOpen ? (
             <Button
               size="small"
               variant="secondary"
@@ -93,8 +108,22 @@ export function WorldScreen() {
             >
               {text.world.pause}
             </Button>
-          ) : null}
+          ) : (
+            <Button
+              size="small"
+              variant="secondary"
+              onClick={() => setMenuOpen(true)}
+              data-testid="menu-button"
+            >
+              {text.world.menu}
+            </Button>
+          )}
         </div>
+        {saveFailed ? (
+          <p className={styles.warning} role="alert" data-testid="save-warning">
+            {text.world.saveFailed}
+          </p>
+        ) : null}
       </div>
 
       {panel?.type === 'stall' ? (
@@ -102,11 +131,29 @@ export function WorldScreen() {
       ) : null}
       {panel?.type === 'oven' ? <OvenPanel game={game} dispatch={dispatch} /> : null}
       {panel?.type === 'report' ? <ReportPanel game={game} dispatch={dispatch} /> : null}
-      {game.paused ? (
-        <PauseDialog
-          onResume={() => dispatch({ type: 'resume' })}
+      {menuShown && !settingsOpen ? (
+        <MenuDialog
+          shopOpen={shopOpen}
+          onResume={() => {
+            setMenuOpen(false);
+            dispatch({ type: 'resume' });
+          }}
           onCloseShop={() => dispatch({ type: 'closeShop' })}
+          onSettings={() => setSettingsOpen(true)}
+          onQuit={quitToTitle}
         />
+      ) : null}
+      {menuShown && settingsOpen ? <SettingsPanel onClose={() => setSettingsOpen(false)} /> : null}
+      {game.ended ? (
+        <Dialog alert heading={text.gameOver.heading} testId="game-over-dialog">
+          <p className={dialogStyles.body}>{text.gameOver.body(game.loan.missed)}</p>
+          <Button onClick={retryDay} data-testid="retry-day-button">
+            {text.gameOver.retry}
+          </Button>
+          <Button variant="secondary" onClick={quitToTitle} data-testid="quit-button">
+            {text.gameOver.quit}
+          </Button>
+        </Dialog>
       ) : null}
     </AppShell>
   );

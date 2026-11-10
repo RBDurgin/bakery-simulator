@@ -20,6 +20,12 @@ export type AssetId =
   | 'customer'
   | 'clock'
   | 'shelf'
+  | 'settings'
+  | 'gift'
+  | 'bank'
+  | 'easy'
+  | 'medium'
+  | 'hard'
   // Places and the things in them.
   | 'home'
   | 'street'
@@ -78,6 +84,12 @@ const ASSETS: Record<AssetId, Asset> = {
   customer: { kind: 'emoji', emoji: '🙂', label: 'Customer' },
   clock: { kind: 'emoji', emoji: '⏰', label: 'Clock' },
   shelf: { kind: 'emoji', emoji: '🧺', label: 'Shelf' },
+  settings: { kind: 'emoji', emoji: '⚙️', label: 'Settings' },
+  gift: { kind: 'emoji', emoji: '🎁', label: 'Gift' },
+  bank: { kind: 'emoji', emoji: '🏦', label: 'Bank' },
+  easy: { kind: 'emoji', emoji: '🌱', label: 'Easy' },
+  medium: { kind: 'emoji', emoji: '🌿', label: 'Medium' },
+  hard: { kind: 'emoji', emoji: '🌶️', label: 'Hard' },
 
   home: { kind: 'emoji', emoji: '🏠', label: 'Home' },
   street: { kind: 'emoji', emoji: '🛣️', label: 'Street' },

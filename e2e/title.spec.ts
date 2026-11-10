@@ -11,7 +11,7 @@ test.describe('title and new game', () => {
     await expect(page.getByRole('heading', { level: 1, name: 'Bakery Simulator' })).toBeVisible();
   });
 
-  test('start button is a large touch target and opens the new game form', async ({ page }) => {
+  test('start button is a large touch target and opens the save slots', async ({ page }) => {
     const start = page.getByTestId('start-button');
     await expect(start).toBeVisible();
 
@@ -20,6 +20,11 @@ test.describe('title and new game', () => {
     expect(box?.width ?? 0).toBeGreaterThanOrEqual(44);
 
     await start.click();
+    await expect(page.getByRole('heading', { name: 'Your bakeries' })).toBeVisible();
+    await expectNoHorizontalScroll(page);
+    await expectNoA11yViolations(page);
+
+    await page.getByTestId('slot-1-new').click();
     await expect(page.getByRole('heading', { name: 'Your new bakery' })).toBeVisible();
   });
 
@@ -32,6 +37,7 @@ test.describe('title and new game', () => {
 
   test('new game form offers default names and passes accessibility checks', async ({ page }) => {
     await page.getByTestId('start-button').click();
+    await page.getByTestId('slot-1-new').click();
     await expect(page.getByTestId('bakery-name-input')).toHaveValue('Sunny Bakery');
     await expect(page.getByTestId('player-name-input')).toHaveValue('Sam');
     await expectNoHorizontalScroll(page);
@@ -47,6 +53,7 @@ test.describe('title and new game', () => {
 
   test('the look the player picks is the baker in the world', async ({ page }) => {
     await page.getByTestId('start-button').click();
+    await page.getByTestId('slot-1-new').click();
     const look = page.getByTestId('look-baker-3');
     await look.click();
     await expect(look.getByRole('radio')).toBeChecked();

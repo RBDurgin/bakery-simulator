@@ -25,3 +25,18 @@
 .body {
   margin: 0;
 }
+
+.dialog {
+  max-height: 100%;
+  overflow-y: auto;
+}
+
+.dialog > * {
+  flex-shrink: 0;
+}
+
+.note {
+  margin: 0;
+  font-size: var(--font-size-small);
+  color: var(--color-text-muted);
+}

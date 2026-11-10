@@ -1,5 +1,4 @@
 import { Fragment } from 'react';
-import { BALANCE } from '../../content/balance';
 import { INGREDIENTS } from '../../content/ingredients';
 import { customerLook } from '../../content/looks';
 import { PLACES, type Place, type Point, type Thing } from '../../content/places';
@@ -7,7 +6,7 @@ import { RECIPES, RECIPE_IDS } from '../../content/recipes';
 import { text } from '../../content/text';
 import type { Action } from '../../engine/game';
 import { formatCents } from '../../engine/money';
-import { bakerPoint, ovenStage } from '../../engine/selectors';
+import { bakerPoint, ovenStage, settingsFor } from '../../engine/selectors';
 import type { GameState } from '../../engine/state';
 import type { Leaving } from '../../store/leaving';
 import { GameIcon } from '../components/GameIcon';
@@ -52,7 +51,7 @@ function ThingStatus({ thing, game }: { thing: Thing; game: GameState }) {
         </span>
       );
     case 'oven': {
-      const stage = ovenStage(game.oven);
+      const stage = ovenStage(game);
       if (game.oven.status === 'empty') {
         return (
           <span className={styles.status} data-testid="oven-status" data-stage={stage}>
@@ -91,6 +90,7 @@ function ThingStatus({ thing, game }: { thing: Thing; game: GameState }) {
 function Customers({ place, game, dispatch, leaving }: Required<SceneProps> & { place: Place }) {
   const queue = place.queue ?? [];
   const door = place.entrance ?? { x: 0, y: 100 };
+  const patience = settingsFor(game).customerPatienceMs;
   return (
     <>
       <ul className={styles.customers} aria-label={text.things.customersHeading}>
@@ -119,8 +119,8 @@ function Customers({ place, game, dispatch, leaving }: Required<SceneProps> & { 
                 <progress
                   className={styles.bar}
                   aria-hidden
-                  max={BALANCE.customerPatienceMs}
-                  value={BALANCE.customerPatienceMs - customer.waitedMs}
+                  max={patience}
+                  value={patience - customer.waitedMs}
                 />
               </button>
             </li>

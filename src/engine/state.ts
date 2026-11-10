@@ -1,4 +1,10 @@
 import { BALANCE } from '../content/balance';
+import {
+  DEFAULT_DIFFICULTY,
+  DIFFICULTIES,
+  isDifficulty,
+  type Difficulty,
+} from '../content/difficulty';
 import { INGREDIENT_IDS, type IngredientId } from '../content/ingredients';
 import { DEFAULT_BAKER_LOOK, isBakerLook, type BakerLook } from '../content/looks';
 import { WAKE_UP, type PlaceId } from '../content/places';
@@ -24,6 +30,17 @@ export interface DayStats {
   wasted: Record<RecipeId, number>;
   happyCustomers: number;
   lostCustomers: number;
+  /** Paid back on a loan when the till was counted. Not part of the profit. */
+  repaid: Cents;
+  /** True when a repayment was due this evening and there was not enough money. */
+  missedRepayment: boolean;
+}
+
+/** Money lent by the bank when the baker ran out. Easy mode never has one. */
+export interface Loan {
+  owed: Cents;
+  /** Repayments missed since the loan was last fully paid back. */
+  missed: number;
 }
 
 /** What the player tapped: a thing in the baker's place, or a waiting customer. */
@@ -55,6 +72,8 @@ export type Panel =
 /** What just happened, for the UI to put into words. */
 export type Message =
   | { id: 'goodMorning' }
+  | { id: 'gift'; amount: Cents }
+  | { id: 'loan'; amount: Cents; owed: Cents; repayment: Cents }
   | { id: 'arrived'; place: PlaceId }
   | { id: 'stallClosed' }
   | { id: 'nothingToBake' }
@@ -83,6 +102,7 @@ export interface GameState {
   bakeryName: string;
   playerName: string;
   bakerLook: BakerLook;
+  difficulty: Difficulty;
   day: number;
   phase: Phase;
   money: Cents;
@@ -107,6 +127,9 @@ export interface GameState {
   message: Message | null;
   /** True once the till has been counted this evening. */
   tillCounted: boolean;
+  loan: Loan;
+  /** True when the run is over (Hard only). Nothing changes after that. */
+  ended: boolean;
 }
 
 export interface NewGameOptions {
@@ -114,6 +137,7 @@ export interface NewGameOptions {
   bakeryName?: string;
   playerName?: string;
   bakerLook?: string;
+  difficulty?: string;
 }
 
 export const DEFAULT_BAKERY_NAME = 'Sunny Bakery';
@@ -131,6 +155,8 @@ export function emptyDayStats(): DayStats {
     wasted: zeroes(RECIPE_IDS),
     happyCustomers: 0,
     lostCustomers: 0,
+    repaid: 0,
+    missedRepayment: false,
   };
 }
 
@@ -141,13 +167,15 @@ export function cleanName(name: string | undefined, fallback: string): string {
 }
 
 export function createGame(options: NewGameOptions): GameState {
+  const difficulty = isDifficulty(options.difficulty) ? options.difficulty : DEFAULT_DIFFICULTY;
   return {
     bakeryName: cleanName(options.bakeryName, DEFAULT_BAKERY_NAME),
     playerName: cleanName(options.playerName, DEFAULT_PLAYER_NAME),
     bakerLook: isBakerLook(options.bakerLook) ? options.bakerLook : DEFAULT_BAKER_LOOK,
+    difficulty,
     day: 1,
     phase: 'morning',
-    money: BALANCE.startingMoney,
+    money: DIFFICULTIES[difficulty].startingMoney,
     rng: options.seed >>> 0,
     reputation: BALANCE.startingReputation,
     ingredients: zeroes(INGREDIENT_IDS),
@@ -163,5 +191,7 @@ export function createGame(options: NewGameOptions): GameState {
     panel: null,
     message: { id: 'goodMorning' },
     tillCounted: false,
+    loan: { owed: 0, missed: 0 },
+    ended: false,
   };
 }

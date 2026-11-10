@@ -2,6 +2,7 @@ import { defineConfig, devices } from '@playwright/test';
 
 const PORT = 4173;
 const isCI = !!process.env.CI;
+const VISUAL = /visual\.spec\.ts/;
 
 export default defineConfig({
   testDir: './e2e',
@@ -14,11 +15,16 @@ export default defineConfig({
     baseURL: `http://localhost:${PORT}`,
     trace: 'retain-on-failure',
   },
+  // One baseline for each screenshot. They are made on CI only, so there is no platform in the path.
+  snapshotPathTemplate: 'e2e/__screenshots__/{projectName}/{arg}{ext}',
   // Phone projects come first: every journey runs on them.
   projects: [
-    { name: 'phone-chromium', use: { ...devices['Pixel 7'] } },
-    { name: 'phone-webkit', use: { ...devices['iPhone 14'] } },
-    { name: 'desktop-chromium', use: { ...devices['Desktop Chrome'] } },
+    { name: 'phone-chromium', testIgnore: VISUAL, use: { ...devices['Pixel 7'] } },
+    { name: 'phone-webkit', testIgnore: VISUAL, use: { ...devices['iPhone 14'] } },
+    { name: 'desktop-chromium', testIgnore: VISUAL, use: { ...devices['Desktop Chrome'] } },
+    // Screenshot tests. Run with `npm run e2e:visual`; see the README.
+    { name: 'visual-phone', testMatch: VISUAL, use: { ...devices['Pixel 7'] } },
+    { name: 'visual-desktop', testMatch: VISUAL, use: { ...devices['Desktop Chrome'] } },
   ],
   webServer: {
     // Test hooks (fixed seed, clock speed) exist only in this build.

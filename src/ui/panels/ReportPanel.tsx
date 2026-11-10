@@ -1,7 +1,8 @@
 import { RECIPES, RECIPE_IDS, type RecipeId } from '../../content/recipes';
 import { text } from '../../content/text';
 import { formatCents } from '../../engine/money';
-import { profit, starsFor } from '../../engine/selectors';
+import { profit, settingsFor, starsFor } from '../../engine/selectors';
+import type { GameState } from '../../engine/state';
 import { GameIcon } from '../components/GameIcon';
 import { Stars } from '../components/Stars';
 import { Panel } from './Panel';
@@ -22,6 +23,48 @@ function ItemCounts({ counts, empty }: { counts: Record<RecipeId, number>; empty
         </li>
       ))}
     </ul>
+  );
+}
+
+/** What happened to the bank loan this evening. Shown only when there is, or was, a loan. */
+function LoanCard({ game }: { game: GameState }) {
+  const { repaid, missedRepayment } = game.today;
+  if (game.loan.owed === 0 && repaid === 0) return null;
+  const help = settingsFor(game).rescue;
+  const maxMissed = help.kind === 'loan' ? help.maxMissed : null;
+  const note = missedRepayment
+    ? maxMissed === null
+      ? text.evening.missed
+      : text.evening.missedCount(game.loan.missed, maxMissed)
+    : game.loan.owed === 0
+      ? text.evening.loanDone
+      : text.evening.loanExplained;
+
+  return (
+    <section
+      className={styles.card}
+      aria-labelledby="report-loan-heading"
+      data-testid="report-loan"
+    >
+      <h3 id="report-loan-heading" className={styles.cardHeading}>
+        <GameIcon id="bank" decorative /> {text.evening.loanHeading}
+      </h3>
+      <table className={styles.table}>
+        <tbody>
+          <tr>
+            <th scope="row">{text.evening.repaid}</th>
+            <td data-testid="report-repaid">{formatCents(repaid)}</td>
+          </tr>
+          <tr>
+            <th scope="row">{text.evening.owed}</th>
+            <td data-testid="report-owed">{formatCents(game.loan.owed)}</td>
+          </tr>
+        </tbody>
+      </table>
+      <p className={styles.note} data-testid="report-loan-note">
+        {note}
+      </p>
+    </section>
   );
 }
 
@@ -72,6 +115,8 @@ export function ReportPanel({ game, dispatch }: PanelProps) {
           {profitSentence}
         </p>
       </section>
+
+      <LoanCard game={game} />
 
       <section className={styles.card} aria-labelledby="report-sold-heading">
         <h3 id="report-sold-heading" className={styles.cardHeading}>

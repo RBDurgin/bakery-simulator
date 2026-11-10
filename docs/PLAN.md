@@ -13,7 +13,7 @@ off phases as they are finished.
 | Presentation | The whole game is a small world the player walks around: the bakery, the street, the market, and later the bank. Menu panels open at the place where the job is done. See 2.7. |
 | Movement | Tap to walk: tap a thing or a person and the baker walks there and does the job. No joystick, no free steering. |
 | Difficulty | Easy, Medium, Hard, chosen when a new game starts. |
-| Saves | Browser local storage, several save slots, autosave. |
+| Saves | Browser local storage, three save slots, autosave. |
 | Tutorials | A first-day tutorial, plus a short tutorial each time a feature unlocks. |
 | Tech stack | React + TypeScript + Vite. Vitest for unit tests, Playwright for e2e. |
 | Art | Emoji and CSS first, behind an asset layer so real art can replace it later. This covers characters and places too. |
@@ -455,18 +455,89 @@ the phone projects, with keyboard-only and axe checks on each place.
 
 ### Phase 3 — Saves, difficulty, settings
 
-- [ ] **3.1 Save system.** Versioned schema, validation, three slots,
+- [x] **3.1 Save system.** Versioned schema, validation, three slots,
   autosave, continue, delete with confirmation, storage error handling.
-- [ ] **3.2 Difficulty modes.** Difficulty table wired into the engine,
+- [x] **3.2 Difficulty modes.** Difficulty table wired into the engine,
   difficulty picker on new game, out-of-money handling per mode.
-- [ ] **3.3 Settings.** Sound on/off, reduced motion, text size; stored
+- [x] **3.3 Settings.** Sound on/off, reduced motion, text size; stored
   separately from save slots.
-- [ ] **3.4 Visual tests.** Screenshot baselines for the key screens at phone
+- [x] **3.4 Visual tests.** Screenshot baselines for the key screens at phone
   and desktop sizes, made and updated by a CI job.
 
 *Tests:* migration and corrupted-save unit tests; unit tests proving each
 difficulty value changes behaviour; e2e journeys "save, reload the page,
 continue", "three slots stay separate", and one day on each difficulty.
+
+*Done.* Notes from building it:
+
+- **Flow:** Title → save slots → new game form (for an empty slot) or
+  straight into the game. The title also has Settings. In the game a Menu
+  button sits where Pause is during shop hours; both open the same dialog,
+  with Settings and a way back to the title.
+- **Save format** (`src/save/`): one local storage key for each slot, holding
+  `version`, the game, and the game as it was when the baker woke up that
+  day. Version 1 is the first format, so there are no migrations yet; the
+  step runner is tested with made-up old formats. When the format changes,
+  follow the note in `migrations.ts`.
+- **Loading checks every part** of a save and builds a clean game from it.
+  Anything unknown is dropped; anything wrong makes the slot "broken", which
+  the slots screen says kindly and offers to delete. A walk, an open panel
+  and a pause are never kept.
+- **Autosave points:** a new game, the shop opening (end of the morning), the
+  shop closing, the till being counted, and going to bed. Outside shop hours
+  the game also saves when the player leaves from the menu or the browser
+  tab is hidden, so a phone that drops the tab loses nothing.
+- **An open shop is never saved part-way.** The save made at opening time is
+  loaded as that day's morning: the baker is at home again with the money
+  and ingredients they had when the shop opened. The pause screen warns
+  about this before leaving.
+- **Storage errors:** if a save cannot be stored, a line under the scene says
+  so and the game carries on in memory. Blocked storage reads as empty slots.
+- **Difficulty table** is `src/content/difficulty.ts`; `balance.ts` keeps
+  only the numbers every mode shares. Wired in so far:
+
+  | Setting | Easy | Medium | Hard |
+  | --- | --- | --- | --- |
+  | Starting money | $100 | $60 | $40 |
+  | Customer patience (shop clock) | 120 s | 60 s | 40 s |
+  | Shop clock speed | 0.75× | 1× | 1.25× |
+  | Burn window (shop clock) | 60 s | 30 s | 15 s |
+  | Out of money | $20 gift | $20 loan | $20 loan + $5 fee |
+
+  The other rows of the table in 2.3 join it with their features: price
+  changes (6.1), bills (6.2), spoilage (5.4), hints (Phase 4).
+- **Clock speed** changes the shop clock only: closing time, baking,
+  customers arriving and their patience. Walking is never sped up, so on
+  Hard a trip across the shop costs more shop time. A shop day lasts 4 real
+  minutes on Easy, 3 on Medium and about 2½ on Hard.
+- **Out of money** means waking up unable to pay for one batch of anything,
+  counting what is in the cupboard. It is checked each morning. Easy:
+  Grandma sends a gift and a tip. Medium and Hard: the bank lends money, and
+  counting the till pays back $5 each evening. A repayment that cannot be
+  paid in full is missed and the money is kept. On Hard the third miss ends
+  the run (misses are cleared when the loan is paid off); the game-over
+  dialog offers the day again from its morning. Medium never ends.
+- Repayments are not a cost, so they do not change the day's profit. The
+  report shows them on their own card. This is the simple version of loans;
+  the bank as a place, and choosing to borrow, is still 6.4.
+- **Settings** (`bakery-simulator.settings`): sound, less movement, text
+  size. Less movement follows the device until the player chooses. The app
+  puts `data-motion` and `data-text-size` on the page and `theme.css` does
+  the rest; text size scales the root font size, and everything is in rem.
+- **Sound:** a few short notes made with the Web Audio API (a sale, a batch
+  ready, a burnt batch, opening and closing), so the sound setting has
+  something to switch. No audio files. The full set of sounds is still 8.1.
+- **Visual tests:** `e2e/visual.spec.ts`, twelve still screens at phone and
+  desktop size, in their own Playwright projects (`npm run e2e:visual`).
+  Baselines are made on CI by the "Visual baselines" workflow, started by
+  hand or by `[visual-baselines]` in a commit message, which commits the
+  pictures to the branch. CI skips the screenshot tests while a branch has
+  no baselines. Screens with a running clock are left out.
+- **Prepared saves for e2e** are built in `e2e/saves.ts` with the game's own
+  engine and put into local storage before the page loads, so no test hook
+  was needed for loading a save.
+- New parts of the game state: `difficulty`, `loan`, `ended`, and `repaid`
+  and `missedRepayment` in the day's numbers.
 
 ### Phase 4 — Tutorials
 
