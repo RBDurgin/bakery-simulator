@@ -10,11 +10,13 @@ off phases as they are finished.
 | --- | --- |
 | Audience | Ages 8–12. Short text, simple money math, icons alongside words. |
 | Core loop | Day cycle at a relaxed pace: plan and shop → bake and serve → end-of-day report. |
+| Presentation | The whole game is a small world the player walks around: the bakery, the street, the market, and later the bank. Menu panels open at the place where the job is done. See 2.7. |
+| Movement | Tap to walk: tap a thing or a person and the baker walks there and does the job. No joystick, no free steering. |
 | Difficulty | Easy, Medium, Hard, chosen when a new game starts. |
 | Saves | Browser local storage, several save slots, autosave. |
 | Tutorials | A first-day tutorial, plus a short tutorial each time a feature unlocks. |
 | Tech stack | React + TypeScript + Vite. Vitest for unit tests, Playwright for e2e. |
-| Art | Emoji and CSS first, behind an asset layer so real art can replace it later. |
+| Art | Emoji and CSS first, behind an asset layer so real art can replace it later. This covers characters and places too. |
 | Layout | Mobile-first. Phone portrait is the primary target; tablet and desktop scale up. |
 | Themes | Baking, budgeting, management. |
 | Name | The game is "Bakery Simulator". The player names their bakery and their character. |
@@ -29,14 +31,17 @@ off phases as they are finished.
 
 Each in-game day has three phases.
 
-1. **Morning — plan and shop.** No clock. The player checks their money, buys
-   ingredients, and decides what to bake. This is where budgeting happens.
-2. **Open — bake and serve.** A gentle clock runs. The player puts recipes in
-   the oven, takes them out when ready, and serves customers who ask for items.
-   Customers wait patiently; how patiently depends on difficulty.
-3. **Evening — report.** No clock. A simple report shows money earned, money
-   spent, profit, what sold, what was wasted, and happy customers. The game
-   autosaves here.
+1. **Morning — plan and shop.** No clock. The baker walks to the market, buys
+   ingredients at the stalls, and walks back. This is where budgeting happens.
+   Turning the door sign to "Open" starts the day.
+2. **Open — bake and serve.** A gentle clock runs and the baker stays in the
+   bakery. The player sends the baker to the oven to bake and take goods out,
+   and to the counter to serve. Customers walk in, queue, and show what they
+   want. They wait patiently; how patiently depends on difficulty.
+3. **Evening — report.** No clock. The baker counts the till, which opens a
+   simple report: money earned, money spent, profit, what sold, what was
+   wasted, and happy customers. The game autosaves here. Going home to bed
+   starts the next day.
 
 The clock pauses whenever a menu, tutorial, or the pause screen is open, and
 when the browser tab is hidden.
@@ -54,7 +59,7 @@ when the browser tab is hidden.
 **Budgeting**
 - Money is stored as whole cents and shown as dollars and cents.
 - Ingredients cost money; goods sell for a price the player can set (from
-  Phase 5).
+  Phase 6).
 - The evening report teaches income, cost, and profit in plain words.
 - Later: daily rent and bills, savings goals for upgrades, a simple ledger and
   chart, and an optional loan on Medium and Hard.
@@ -126,6 +131,47 @@ new thing, and each unlock triggers its tutorial. Planned order:
 - Colour is never the only signal; icons and words back it up.
 - Sound is optional and off-switchable; a reduced-motion setting is respected.
 
+### 2.7 The walkable world
+
+Decided after Phase 1, which was built as flat menu screens. The game becomes
+a small world with characters in it.
+
+**Places**
+- Each place is one room that fits the phone screen. There is no scrolling
+  camera. Doors and paths lead from one room to the next.
+- Starting places: the bakery (oven, shelf, counter, till, door), the street
+  outside, the market (one stall for each ingredient), and home.
+- Later places arrive with their features: the bank (savings and loans), a
+  notice board (special orders and events).
+
+**Moving**
+- The player taps a thing or a person. The baker walks there along a simple
+  path and then does the job. Tapping somewhere else changes the plan.
+- Walking takes a little time. In the open phase that makes the order of jobs
+  matter: a trip to the oven is a moment away from the counter. Walks are
+  short (about a second between stations) so nothing feels slow.
+- During the open phase the baker stays in the bakery.
+
+**Characters**
+- The player's baker, with a look chosen at the start of a new game.
+- Customers who walk in, queue, show what they want in a bubble, and leave
+  happy or grumpy.
+- Townsfolk with jobs: stall keepers at the market, the guide character for
+  tutorials, and later a banker and hired helpers who can be seen working.
+
+**Panels**
+- Jobs with numbers still use a panel: buying at a stall, the evening report,
+  later prices and the ledger. A panel slides up at the place where the job is
+  done and the clock pauses while it is open. The Phase 1 screens become these
+  panels.
+- Money, the clock and the stars stay on screen in every place.
+
+**Rules that still hold**
+- Everything that can be tapped is a real button with a name, so the game
+  works with a keyboard and a screen reader. Arriving somewhere is announced.
+- With reduced motion on, characters glide without bouncing or other effects.
+  Walking still takes the same game time.
+
 ## 3. Technical design
 
 ### 3.1 Architecture
@@ -133,11 +179,15 @@ new thing, and each unlock triggers its tutorial. Planned order:
 ```
 src/
   engine/      Pure TypeScript game rules. No React, no DOM, no clock of its own.
-  content/     Data: recipes, ingredients, difficulty table, unlocks, tutorials.
+  content/     Data: recipes, ingredients, places, difficulty table, unlocks,
+               tutorials.
   save/        Local storage, save schema, versioned migrations.
   store/       Thin state store that connects engine to UI.
   ui/          React screens and components.
-  assets/      Asset layer: maps item ids to emoji now, images later.
+    scene/     Draws a place: its background, things to tap, and characters.
+    panels/    Menu panels that open at a place (stall, report, and so on).
+  assets/      Asset layer: maps item, character and place ids to emoji now,
+               images later.
   test/        Shared test helpers and fixtures.
 e2e/           Playwright tests.
 docs/          This plan and later design notes.
@@ -155,6 +205,20 @@ Key rules:
   actions. UI components never change game state directly.
 - **Styling:** CSS Modules with CSS custom properties for the theme. No UI
   framework.
+- **Places are data.** A place lists its spots (where a character can stand),
+  the paths between them, and the things that can be tapped. Characters walk
+  along paths from spot to spot; there is no free movement and no collision
+  maths.
+- **The engine knows where the baker is.** The baker's place, spot and
+  current walk are engine state, and walking advances in `tick`, so the time
+  a walk takes is a tested game rule and e2e runs stay repeatable. Purely
+  decorative movement (a customer strolling out of the door, a walking bounce)
+  belongs to the UI.
+- **No game engine library.** Scenes are ordinary DOM elements moved with CSS
+  transforms. A room holds about a dozen characters, which does not need a
+  canvas, and it keeps real buttons, the accessibility checks, and the
+  download budget. The scene code sits behind one component, so it can be
+  swapped for a canvas renderer later if the world outgrows this.
 
 ### 3.2 Saves
 
@@ -272,14 +336,14 @@ journey "play one full day and see the correct profit" using a fixed seed.
 - Customer order depends only on the seed, never on how fast the player is.
   Random numbers are drawn even when the queue is full and a customer walks
   past.
-- Until the difficulty table arrives (Phase 2.2), one set of numbers in
+- Until the difficulty table arrives (Phase 3.2), one set of numbers in
   `src/content/balance.ts` is used, based on the planned Medium values: $60
   to start, a 3-minute open phase, 60 s customer patience, a 30 s burn window.
 - Starter content: four ingredients (flour, sugar, butter, egg) and three
   recipes (cookies, muffins, bread). Each customer wants one item.
 - Simple versions of later features, to be deepened in their own phases: a
-  batch left too long burns and is wasted (quality, 4.2); goods left at
-  closing time are wasted (day-old goods, 4.4); ingredients keep overnight.
+  batch left too long burns and is wasted (quality, 5.2); goods left at
+  closing time are wasted (day-old goods, 5.4); ingredients keep overnight.
 - Reputation is a 0–100 score shown as one to five stars. A happy customer
   adds 2, a customer who gives up waiting takes away 3, and more stars bring
   customers a little sooner. Customers still waiting at closing time do not
@@ -291,89 +355,118 @@ journey "play one full day and see the correct profit" using a fixed seed.
   `VITE_TEST_HOOKS=true`, which the Playwright config sets. Normal builds
   ignore them.
 - Known gap: a player who spends all their money and sells nothing has no way
-  to recover. Out-of-money handling is Phase 2.2.
-- Nothing is saved yet: reloading the page starts over (Phase 2.1).
+  to recover. Out-of-money handling is Phase 3.2.
+- Nothing is saved yet: reloading the page starts over (Phase 3.1).
 - Visual screenshot tests are still not started. Baselines must be made on
   the same system CI uses (fonts and emoji differ between machines), so they
-  need a CI job that can update them. Moved to Phase 2.
+  need a CI job that can update them. Moved to Phase 3.
 
-### Phase 2 — Saves, difficulty, settings
+### Phase 2 — The walkable world
 
-- [ ] **2.1 Save system.** Versioned schema, validation, three slots,
+Comes before saves so the save format is designed once, with places and
+positions already in the game state.
+
+- [ ] **2.1 Scene foundation.** Place data format (spots, paths, things to
+  tap). Engine state for where the baker is, a walk-to action, and walking in
+  `tick`. Scene component, character component, tap to walk, arrival
+  announcements, reduced motion.
+- [ ] **2.2 Bakery scene.** The open phase played in the bakery: walk to the
+  oven, shelf and counter; customers walk in, queue, show an order bubble and
+  leave. Replaces the Phase 1 open screen.
+- [ ] **2.3 Street and market.** The street outside and a market with a stall
+  for each ingredient. Morning shopping happens at the stalls; the door sign
+  opens the shop. Replaces the Phase 1 morning screen.
+- [ ] **2.4 Evening and home.** Closing up, counting the till to open the
+  report panel, going home to start the next day. Replaces the Phase 1
+  evening screen.
+- [ ] **2.5 Character looks.** Choose the baker's look in the new game flow;
+  varied looks for customers and townsfolk through the asset layer.
+
+*Tests:* unit tests for walking (paths, changing destination mid-walk, same
+result in one big tick or many small ones) and a content test that every
+place's paths and tappable things are valid; component tests for the scene
+and each panel; the "play one full day" e2e journey redone in the world, on
+the phone projects, with keyboard-only and axe checks on each place.
+
+### Phase 3 — Saves, difficulty, settings
+
+- [ ] **3.1 Save system.** Versioned schema, validation, three slots,
   autosave, continue, delete with confirmation, storage error handling.
-- [ ] **2.2 Difficulty modes.** Difficulty table wired into the engine,
+- [ ] **3.2 Difficulty modes.** Difficulty table wired into the engine,
   difficulty picker on new game, out-of-money handling per mode.
-- [ ] **2.3 Settings.** Sound on/off, reduced motion, text size; stored
+- [ ] **3.3 Settings.** Sound on/off, reduced motion, text size; stored
   separately from save slots.
-- [ ] **2.4 Visual tests.** Screenshot baselines for the key screens at phone
+- [ ] **3.4 Visual tests.** Screenshot baselines for the key screens at phone
   and desktop sizes, made and updated by a CI job.
 
 *Tests:* migration and corrupted-save unit tests; unit tests proving each
 difficulty value changes behaviour; e2e journeys "save, reload the page,
 continue", "three slots stay separate", and one day on each difficulty.
 
-### Phase 3 — Tutorials
+### Phase 4 — Tutorials
 
-- [ ] **3.1 Tutorial engine.** Step data format, highlighting, skip, progress
+- [ ] **4.1 Tutorial engine.** Step data format, highlighting, skip, progress
   stored in the save.
-- [ ] **3.2 First-day tutorial.** Guided first day with the guide character.
-- [ ] **3.4 Read aloud.** Optional setting that speaks tutorial text using
+- [ ] **4.2 First-day tutorial.** Guided first day with the guide character,
+  who appears in the world and walks with the player.
+- [ ] **4.4 Read aloud.** Optional setting that speaks tutorial text using
   the browser's built-in speech.
-- [ ] **3.3 Unlock hooks and Help book.** Tutorials start on unlock events;
+- [ ] **4.3 Unlock hooks and Help book.** Tutorials start on unlock events;
   replay any seen tutorial from Help.
 
 *Tests:* unit tests for the tutorial engine; a content test that every unlock
 has a tutorial and every tutorial step points at a real element; e2e journeys
 for completing, skipping, and replaying the first-day tutorial.
 
-### Phase 4 — Baking depth
+### Phase 5 — Baking depth
 
-- [ ] **4.1 Progression.** Bakery levels, the unlock system, more recipes.
-- [ ] **4.2 Quality.** Perfect, crispy, and burnt results that affect price
+- [ ] **5.1 Progression.** Bakery levels, the unlock system, more recipes.
+- [ ] **5.2 Quality.** Perfect, crispy, and burnt results that affect price
   and reputation.
-- [ ] **4.3 Equipment.** Second oven and upgrades bought with savings.
-- [ ] **4.4 Freshness.** Ingredient spoilage and day-old goods (by
+- [ ] **5.3 Equipment.** Second oven and upgrades bought with savings.
+- [ ] **5.4 Freshness.** Ingredient spoilage and day-old goods (by
   difficulty).
 
 *Tests:* unit tests for unlock rules, quality timing, and spoilage; e2e
 journey from a prepared save that reaches a level-up and sees the unlock
 tutorial.
 
-### Phase 5 — Budgeting depth
+### Phase 6 — Budgeting depth
 
-- [ ] **5.1 Pricing.** Set prices; demand responds to price and reputation.
-- [ ] **5.2 Bills.** Rent and bills on Medium and Hard, with a warning the day
+- [ ] **6.1 Pricing.** Set prices; demand responds to price and reputation.
+- [ ] **6.2 Bills.** Rent and bills on Medium and Hard, with a warning the day
   before.
-- [ ] **5.3 Ledger and goals.** Money history, a simple chart, savings goals.
-- [ ] **5.4 Loans.** Borrow and repay on Medium and Hard.
+- [ ] **6.3 Ledger and goals.** Money history, a simple chart, savings goals.
+- [ ] **6.4 Loans.** Borrow and repay on Medium and Hard, at a new place:
+  the bank.
 
 *Tests:* unit tests for demand, bills, and loan maths, including edge cases
 around zero money; e2e journeys for changing a price and seeing sales change,
 and for taking and repaying a loan.
 
-### Phase 6 — Management depth
+### Phase 7 — Management depth
 
-- [ ] **6.1 Customers.** Customer types with different tastes and patience.
-- [ ] **6.2 Special orders.** Orders placed ahead with a deadline and bonus.
-- [ ] **6.3 Helpers.** Hire a baker or cashier, pay wages, see what they
-  automate.
-- [ ] **6.4 Events.** Weather, town events, and seasons that change demand.
+- [ ] **7.1 Customers.** Customer types with different tastes and patience.
+- [ ] **7.2 Special orders.** Orders placed ahead with a deadline and bonus.
+- [ ] **7.3 Helpers.** Hire a baker or cashier, pay wages, and watch them
+  work in the bakery.
+- [ ] **7.4 Events.** Weather, town events, and seasons that change demand.
 
 *Tests:* unit tests for each system; a long simulated-run test (many days
 played by a simple scripted player) on each difficulty to catch balance and
 dead-end bugs; e2e journeys for a special order and for hiring a helper.
 
-### Phase 7 — Polish and release
+### Phase 8 — Polish and release
 
-- [ ] **7.1 Feel.** Sound effects, gentle animation, achievements and
+- [ ] **8.1 Feel.** Sound effects, gentle animation, achievements and
   stickers.
-- [ ] **7.2 Art upgrade.** Replace emoji with illustrations through the asset
-  layer where wanted.
-- [ ] **7.3 Offline and install.** Installable web app that works offline;
+- [ ] **8.2 Art upgrade.** Replace emoji with illustrations through the asset
+  layer where wanted, including characters and place backgrounds.
+- [ ] **8.3 Offline and install.** Installable web app that works offline;
   save export and import.
-- [ ] **7.4 Quality pass.** Full accessibility review, performance check
+- [ ] **8.4 Quality pass.** Full accessibility review, performance check
   against the budget, balance tuning from playtests with children.
-- [ ] **7.5 Release.** Deploy to Vercel, with preview deployments for pull
+- [ ] **8.5 Release.** Deploy to Vercel, with preview deployments for pull
   requests.
 
 *Tests:* offline e2e test, export/import round-trip test, full visual
@@ -386,3 +479,6 @@ None at the moment. Things to revisit later:
 1. Whether to add an end goal once the open-ended game is fun.
 2. Whether browser speech is good enough for read aloud, or recorded
    voice-over is worth the extra work.
+3. Whether to add arrow-key walking on desktop as an extra to tap to walk.
+4. Whether DOM scenes stay fast enough as the world grows, or a canvas
+   renderer is needed (see 3.1).
