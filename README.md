@@ -27,6 +27,9 @@ npm run dev
 | `npm run e2e`           | Run Playwright on all projects (`e2e:phone` for phones only). |
 | `npm run check`         | Everything CI runs except Playwright.                         |
 
+Playwright builds the game with `VITE_TEST_HOOKS=true`. Only in that build,
+`?seed=42&speed=5` in the URL fixes the random seed and speeds up the clock.
+
 The first time you run Playwright locally, install its browsers with
 `npx playwright install chromium webkit`.
 

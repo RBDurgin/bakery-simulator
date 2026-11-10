@@ -21,7 +21,9 @@ export default defineConfig({
     { name: 'desktop-chromium', use: { ...devices['Desktop Chrome'] } },
   ],
   webServer: {
+    // Test hooks (fixed seed, clock speed) exist only in this build.
     command: `npm run build && npm run preview -- --port ${PORT} --strictPort`,
+    env: { VITE_TEST_HOOKS: 'true' },
     url: `http://localhost:${PORT}`,
     reuseExistingServer: !isCI,
     timeout: 120_000,

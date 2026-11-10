@@ -1,11 +1,11 @@
-import { useState } from 'react';
 import { text } from '../../content/text';
+import { useGameStore } from '../../store/gameStore';
 import { GameIcon } from '../components/GameIcon';
 import styles from './TitleScreen.module.css';
 
-/** Placeholder title screen. The real new-game flow arrives in Phase 1.5. */
+/** The first screen. Start leads to the new game form. */
 export function TitleScreen() {
-  const [showComingSoon, setShowComingSoon] = useState(false);
+  const goTo = useGameStore((store) => store.goTo);
 
   return (
     <section className={styles.title} aria-labelledby="game-title">
@@ -27,13 +27,10 @@ export function TitleScreen() {
           type="button"
           className={styles.primary}
           data-testid="start-button"
-          onClick={() => setShowComingSoon(true)}
+          onClick={() => goTo('newGame')}
         >
           {text.startButton}
         </button>
-        <p className={styles.notice} role="status" data-testid="coming-soon">
-          {showComingSoon ? text.comingSoon : ''}
-        </p>
       </div>
     </section>
   );

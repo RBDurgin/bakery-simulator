@@ -4,7 +4,21 @@
  * screens or components.
  */
 export type AssetId =
-  'bakery' | 'baker' | 'cookie' | 'muffin' | 'bread' | 'oven' | 'coin' | 'star' | 'customer';
+  | 'bakery'
+  | 'baker'
+  | 'cookie'
+  | 'muffin'
+  | 'bread'
+  | 'flour'
+  | 'sugar'
+  | 'butter'
+  | 'egg'
+  | 'oven'
+  | 'coin'
+  | 'star'
+  | 'customer'
+  | 'clock'
+  | 'shelf';
 
 export type Asset =
   { kind: 'emoji'; emoji: string; label: string } | { kind: 'image'; src: string; label: string };
@@ -15,10 +29,16 @@ const ASSETS: Record<AssetId, Asset> = {
   cookie: { kind: 'emoji', emoji: '🍪', label: 'Cookie' },
   muffin: { kind: 'emoji', emoji: '🧁', label: 'Muffin' },
   bread: { kind: 'emoji', emoji: '🍞', label: 'Bread' },
+  flour: { kind: 'emoji', emoji: '🌾', label: 'Flour' },
+  sugar: { kind: 'emoji', emoji: '🍬', label: 'Sugar' },
+  butter: { kind: 'emoji', emoji: '🧈', label: 'Butter' },
+  egg: { kind: 'emoji', emoji: '🥚', label: 'Egg' },
   oven: { kind: 'emoji', emoji: '🔥', label: 'Oven' },
   coin: { kind: 'emoji', emoji: '🪙', label: 'Money' },
   star: { kind: 'emoji', emoji: '⭐', label: 'Star' },
   customer: { kind: 'emoji', emoji: '🙂', label: 'Customer' },
+  clock: { kind: 'emoji', emoji: '⏰', label: 'Clock' },
+  shelf: { kind: 'emoji', emoji: '🧺', label: 'Shelf' },
 };
 
 export function getAsset(id: AssetId): Asset {

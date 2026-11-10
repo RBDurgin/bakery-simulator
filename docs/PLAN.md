@@ -247,21 +247,55 @@ and desktop, axe check on the title screen.
 
 ### Phase 1 — Core loop (first playable)
 
-- [ ] **1.1 Engine core.** Game state, seeded random numbers, `tick`, day
+- [x] **1.1 Engine core.** Game state, seeded random numbers, `tick`, day
   phases, money, inventory, the first three recipes.
-- [ ] **1.2 Morning screen.** Buy ingredients, see money and stock, start the
+- [x] **1.2 Morning screen.** Buy ingredients, see money and stock, start the
   day.
-- [ ] **1.3 Open screen.** Bake in one oven, take goods out, customers arrive
+- [x] **1.3 Open screen.** Bake in one oven, take goods out, customers arrive
   and are served, pause.
-- [ ] **1.4 Evening report.** Income, costs, profit, sold and wasted items;
+- [x] **1.4 Evening report.** Income, costs, profit, sold and wasted items;
   continue to the next day.
-- [ ] **1.5 Title and new game flow.** Title screen, new game where the
+- [x] **1.5 Title and new game flow.** Title screen, new game where the
   player names their bakery and character (with friendly defaults and a
   length limit), basic reputation stars. The names appear on the shop sign,
   in reports, and in tutorial text.
 
 *Tests:* unit tests for every engine rule; component tests per screen; e2e
 journey "play one full day and see the correct profit" using a fixed seed.
+
+*Done.* Notes from building it:
+
+- The engine is `src/engine/`: `createGame`, `applyAction(state, action)` and
+  `tick(state, ms)`. An action that is not allowed returns the same state, so
+  the UI can never break a rule. `tick` gives the same result whether time
+  passes in one big step or many small ones.
+- Customer order depends only on the seed, never on how fast the player is.
+  Random numbers are drawn even when the queue is full and a customer walks
+  past.
+- Until the difficulty table arrives (Phase 2.2), one set of numbers in
+  `src/content/balance.ts` is used, based on the planned Medium values: $60
+  to start, a 3-minute open phase, 60 s customer patience, a 30 s burn window.
+- Starter content: four ingredients (flour, sugar, butter, egg) and three
+  recipes (cookies, muffins, bread). Each customer wants one item.
+- Simple versions of later features, to be deepened in their own phases: a
+  batch left too long burns and is wasted (quality, 4.2); goods left at
+  closing time are wasted (day-old goods, 4.4); ingredients keep overnight.
+- Reputation is a 0–100 score shown as one to five stars. A happy customer
+  adds 2, a customer who gives up waiting takes away 3, and more stars bring
+  customers a little sooner. Customers still waiting at closing time do not
+  count against the player.
+- The shop can be closed early, but only from the pause screen, so it cannot
+  be tapped by accident.
+- The game also pauses itself when the browser tab is hidden.
+- Test hooks (`?seed=42&speed=5`) work only in builds made with
+  `VITE_TEST_HOOKS=true`, which the Playwright config sets. Normal builds
+  ignore them.
+- Known gap: a player who spends all their money and sells nothing has no way
+  to recover. Out-of-money handling is Phase 2.2.
+- Nothing is saved yet: reloading the page starts over (Phase 2.1).
+- Visual screenshot tests are still not started. Baselines must be made on
+  the same system CI uses (fonts and emoji differ between machines), so they
+  need a CI job that can update them. Moved to Phase 2.
 
 ### Phase 2 — Saves, difficulty, settings
 
@@ -271,6 +305,8 @@ journey "play one full day and see the correct profit" using a fixed seed.
   difficulty picker on new game, out-of-money handling per mode.
 - [ ] **2.3 Settings.** Sound on/off, reduced motion, text size; stored
   separately from save slots.
+- [ ] **2.4 Visual tests.** Screenshot baselines for the key screens at phone
+  and desktop sizes, made and updated by a CI job.
 
 *Tests:* migration and corrupted-save unit tests; unit tests proving each
 difficulty value changes behaviour; e2e journeys "save, reload the page,
