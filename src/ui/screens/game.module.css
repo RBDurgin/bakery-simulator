@@ -1,0 +1,157 @@
+/* Shared layout for the three in-game screens. */
+.screen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.heading {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: 1.5rem;
+  line-height: 1.2;
+}
+
+.intro {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--color-text-muted);
+}
+
+.card {
+  background: var(--color-surface);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--space-3);
+}
+
+.cardHeading {
+  margin: 0 0 var(--space-2);
+  font-size: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.row + .row {
+  border-top: 1px solid var(--color-border);
+  padding-top: var(--space-2);
+}
+
+.grow {
+  flex: 1;
+  min-width: 0;
+}
+
+.name {
+  display: block;
+  font-weight: 700;
+}
+
+.detail {
+  display: block;
+  font-size: var(--font-size-small);
+  color: var(--color-text-muted);
+}
+
+.note {
+  margin: 0;
+}
+
+.tip {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  border: 2px dashed var(--color-border);
+}
+
+.bar {
+  display: block;
+  width: 100%;
+  height: 0.75rem;
+  accent-color: var(--color-primary);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.actions > * {
+  flex: 1 1 8rem;
+}
+
+.shelf {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-around;
+  gap: var(--space-2);
+}
+
+.shelfItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-weight: 700;
+}
+
+.bottom {
+  display: flex;
+  flex-direction: column;
+  max-width: var(--content-width);
+  margin: 0 auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th {
+  text-align: left;
+  font-weight: 400;
+}
+
+.table td {
+  text-align: right;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.table th,
+.table td {
+  padding: var(--space-1) 0;
+}
+
+.total th,
+.total td {
+  border-top: 2px solid var(--color-border);
+  font-weight: 700;
+  font-size: 1.25rem;
+}

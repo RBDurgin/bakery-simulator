@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { text } from '../../content/text';
+import { useGameStore } from '../../store/gameStore';
 import { TitleScreen } from './TitleScreen';
 
 describe('TitleScreen', () => {
@@ -11,12 +12,9 @@ describe('TitleScreen', () => {
     expect(screen.getByRole('button', { name: text.startButton })).toBeInTheDocument();
   });
 
-  it('shows a friendly coming-soon message when start is pressed', async () => {
+  it('goes to the new game screen when start is pressed', async () => {
     render(<TitleScreen />);
-    expect(screen.getByRole('status')).toBeEmptyDOMElement();
-
     await userEvent.click(screen.getByRole('button', { name: text.startButton }));
-
-    expect(screen.getByRole('status')).toHaveTextContent(text.comingSoon);
+    expect(useGameStore.getState().screen).toBe('newGame');
   });
 });
