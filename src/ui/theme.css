@@ -14,9 +14,20 @@
   --color-focus: #1f5fbf;
   --color-star: #9a5b00;
 
+  /* Place backgrounds. */
+  --scene-wall: #ffe3bd;
+  --scene-home-wall: #e4e6ff;
+  --scene-floor: #e9c9a3;
+  --scene-sky: #cfeaff;
+  --scene-grass: #cbe6ae;
+  --scene-road: #d9d4cc;
+  --scene-wood: #b9824f;
+  --scene-wood-edge: #8b5a2b;
+
   --font-body: 'Trebuchet MS', 'Segoe UI', system-ui, sans-serif;
   --font-size-base: 1.125rem;
   --font-size-small: 1rem;
+  --font-size-tiny: 0.875rem;
   --font-size-title: clamp(2rem, 9vw, 3.25rem);
 
   --space-1: 0.25rem;

@@ -1,0 +1,203 @@
+/*
+ * A place is one room. Things, people and the baker are placed by percent,
+ * with the given point at their bottom middle.
+ */
+.scene {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 23rem;
+  max-height: 40rem;
+  overflow: hidden;
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius);
+  isolation: isolate;
+}
+
+.home {
+  background: linear-gradient(var(--scene-home-wall) 60%, var(--scene-floor) 60%);
+}
+
+.street {
+  background: linear-gradient(
+    var(--scene-sky) 46%,
+    var(--scene-grass) 46% 52%,
+    var(--scene-road) 52% 72%,
+    var(--scene-grass) 72%
+  );
+}
+
+.market {
+  background: var(--scene-grass);
+}
+
+.bakery {
+  background: linear-gradient(var(--scene-wall) 34%, var(--scene-floor) 34%);
+}
+
+/* The counter: the baker works behind it, customers wait in front. */
+.counterTop {
+  position: absolute;
+  left: 34%;
+  right: 0;
+  top: 50%;
+  height: 7%;
+  z-index: 50;
+  background: var(--scene-wood);
+  border-top: 3px solid var(--scene-wood-edge);
+  border-radius: var(--space-1) 0 0 var(--space-1);
+}
+
+.thing,
+.character,
+.customer,
+.leaving,
+.decor {
+  position: absolute;
+  transform: translate(-50%, -100%);
+}
+
+.decor {
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+.thing,
+.customerButton {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: var(--touch-target);
+  min-height: var(--touch-target);
+  border: 2px solid var(--color-primary);
+  border-radius: var(--space-2);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+  line-height: 1.2;
+}
+
+.thing {
+  padding: var(--space-1) var(--space-2);
+  max-width: 44%;
+}
+
+.thing:hover,
+.customerButton:hover {
+  background: var(--color-bg);
+}
+
+.thingName {
+  font-size: var(--font-size-small);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-size-tiny);
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.counts {
+  display: flex;
+  gap: var(--space-2);
+  font-size: var(--font-size-tiny);
+  font-weight: 700;
+}
+
+.count {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.bar {
+  display: block;
+  width: 100%;
+  min-width: 2.5rem;
+  height: 0.5rem;
+  accent-color: var(--color-primary);
+}
+
+.character,
+.leaving {
+  pointer-events: none;
+}
+
+.body {
+  display: block;
+}
+
+.walking .body {
+  animation: bounce 320ms ease-in-out infinite alternate;
+}
+
+@keyframes bounce {
+  to {
+    transform: translateY(-0.3rem);
+  }
+}
+
+.customers {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* A new customer walks in from the door; the queue shuffles along smoothly. */
+.customer {
+  transition:
+    left 400ms ease-out,
+    top 400ms ease-out;
+  animation: walkIn 900ms ease-out;
+}
+
+@keyframes walkIn {
+  from {
+    left: var(--from-x);
+    top: var(--from-y);
+  }
+}
+
+.customerButton {
+  padding: 2px 0;
+  border-color: var(--color-text-muted);
+}
+
+.bubble {
+  display: block;
+  padding: 0 var(--space-1);
+  border-radius: var(--space-2);
+  background: var(--color-bg);
+}
+
+.leaving {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: walkOut 900ms ease-in forwards;
+}
+
+@keyframes walkOut {
+  to {
+    left: var(--to-x);
+    top: var(--to-y);
+    opacity: 0;
+  }
+}
+
+.mood {
+  display: block;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

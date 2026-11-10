@@ -1,5 +1,5 @@
 /**
- * Tuning numbers for the core loop. Phase 2 turns these into the per-difficulty
+ * Tuning numbers for the core loop. Phase 3.2 turns these into the per-difficulty
  * table; until then the game uses this single set (the planned Medium values).
  * All times are in game milliseconds.
  */
@@ -23,6 +23,11 @@ export const BALANCE = {
   reputationMax: 100,
   reputationPerHappyCustomer: 2,
   reputationPerLostCustomer: -3,
+  /**
+   * Walking time for each unit of distance. A room is 100 units wide, so a
+   * walk between stations next to each other takes about half a second.
+   */
+  walkMsPerUnit: 20,
   /** Longest bakery or player name. */
   nameMaxLength: 20,
 } as const;

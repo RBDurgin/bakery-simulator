@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { BALANCE } from '../../content/balance';
+import { BAKER_LOOKS } from '../../content/looks';
 import { text } from '../../content/text';
 import { DEFAULT_BAKERY_NAME, DEFAULT_PLAYER_NAME } from '../../engine/state';
 import { useGameStore } from '../../store/gameStore';
@@ -21,6 +22,7 @@ describe('NewGameScreen', () => {
     expect(useGameStore.getState().game).toMatchObject({
       bakeryName: DEFAULT_BAKERY_NAME,
       playerName: DEFAULT_PLAYER_NAME,
+      bakerLook: 'baker-1',
     });
   });
 
@@ -36,6 +38,20 @@ describe('NewGameScreen', () => {
       bakeryName: 'Bun Fun',
       playerName: 'Ada',
     });
+  });
+
+  it('lets the player pick a look for their baker', async () => {
+    render(<NewGameScreen />);
+    const looks = screen.getAllByRole('radio');
+    expect(looks).toHaveLength(BAKER_LOOKS.length);
+    expect(screen.getByRole('radio', { name: 'Baker look 1' })).toBeChecked();
+
+    await userEvent.click(screen.getByRole('radio', { name: 'Baker look 4' }));
+    expect(screen.getByRole('radio', { name: 'Baker look 4' })).toBeChecked();
+    expect(screen.getByRole('radio', { name: 'Baker look 1' })).not.toBeChecked();
+
+    await submit();
+    expect(useGameStore.getState().game?.bakerLook).toBe('baker-4');
   });
 
   it('limits how long a name can be', async () => {

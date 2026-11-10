@@ -31,8 +31,8 @@ off phases as they are finished.
 
 Each in-game day has three phases.
 
-1. **Morning — plan and shop.** No clock. The baker walks to the market, buys
-   ingredients at the stalls, and walks back. This is where budgeting happens.
+1. **Morning — plan and shop.** No clock. The baker wakes up at home, walks
+   to the market, buys ingredients at the stalls, and walks to the bakery. This is where budgeting happens.
    Turning the door sign to "Open" starts the day.
 2. **Open — bake and serve.** A gentle clock runs and the baker stays in the
    bakery. The player sends the baker to the oven to bake and take goods out,
@@ -179,8 +179,8 @@ a small world with characters in it.
 ```
 src/
   engine/      Pure TypeScript game rules. No React, no DOM, no clock of its own.
-  content/     Data: recipes, ingredients, places, difficulty table, unlocks,
-               tutorials.
+  content/     Data: recipes, ingredients, places, looks, difficulty table,
+               unlocks, tutorials, and all player-facing text.
   save/        Local storage, save schema, versioned migrations.
   store/       Thin state store that connects engine to UI.
   ui/          React screens and components.
@@ -238,7 +238,9 @@ Key rules:
 
 - Design at 360 × 640 portrait first, then add breakpoints for tablet and
   desktop.
-- Bottom navigation and thumb-reachable primary actions.
+- The scene fills the screen and everything in it is in thumb reach. Money,
+  day, stars and the time sit above it; the message line and Pause sit below.
+  There is no bottom navigation: moving between places is done by walking.
 - Tap only: no hover-only or drag-only interactions (drag may be an optional
   extra with a tap alternative).
 - Safe-area insets, no horizontal scrolling, dynamic viewport units.
@@ -366,20 +368,20 @@ journey "play one full day and see the correct profit" using a fixed seed.
 Comes before saves so the save format is designed once, with places and
 positions already in the game state.
 
-- [ ] **2.1 Scene foundation.** Place data format (spots, paths, things to
+- [x] **2.1 Scene foundation.** Place data format (spots, paths, things to
   tap). Engine state for where the baker is, a walk-to action, and walking in
   `tick`. Scene component, character component, tap to walk, arrival
   announcements, reduced motion.
-- [ ] **2.2 Bakery scene.** The open phase played in the bakery: walk to the
+- [x] **2.2 Bakery scene.** The open phase played in the bakery: walk to the
   oven, shelf and counter; customers walk in, queue, show an order bubble and
   leave. Replaces the Phase 1 open screen.
-- [ ] **2.3 Street and market.** The street outside and a market with a stall
+- [x] **2.3 Street and market.** The street outside and a market with a stall
   for each ingredient. Morning shopping happens at the stalls; the door sign
   opens the shop. Replaces the Phase 1 morning screen.
-- [ ] **2.4 Evening and home.** Closing up, counting the till to open the
+- [x] **2.4 Evening and home.** Closing up, counting the till to open the
   report panel, going home to start the next day. Replaces the Phase 1
   evening screen.
-- [ ] **2.5 Character looks.** Choose the baker's look in the new game flow;
+- [x] **2.5 Character looks.** Choose the baker's look in the new game flow;
   varied looks for customers and townsfolk through the asset layer.
 
 *Tests:* unit tests for walking (paths, changing destination mid-walk, same
@@ -387,6 +389,69 @@ result in one big tick or many small ones) and a content test that every
 place's paths and tappable things are valid; component tests for the scene
 and each panel; the "play one full day" e2e journey redone in the world, on
 the phone projects, with keyboard-only and axe checks on each place.
+
+*Done.* Notes from building it:
+
+- **Places** are data in `src/content/places.ts`: home, street, market and
+  bakery. Positions are percentages of the room, so a room stretches to fit
+  any screen. A content test checks every place: spots joined up, things on
+  real spots, doors that lead somewhere with a way back.
+- **One action moves the baker:** `tap`, aimed at a thing or a customer. The
+  baker walks along the paths and the job is done on arriving, never before.
+  Tapping somewhere else mid-walk carries on to the next spot or turns back,
+  whichever is quicker. Walking is 20 ms for each unit of distance, so about
+  half a second between stations next to each other and about 1.4 seconds
+  from the oven to the till.
+- **Jobs** are decided by the engine from what the thing is and the time of
+  day: doors, stalls, oven, shelf, counter, till, sign, bed. Taking a batch
+  out and serving are no longer actions of their own; they happen when the
+  baker reaches the oven or the counter.
+- **Walking takes time in every phase.** `tick` now moves the baker in the
+  morning and evening too, while the shop clock still runs only when the shop
+  is open. The Phase 1 rule holds: one big tick gives the same result as many
+  small ones, including a walk that ends in a panel part of the way through.
+- **Panels are engine state** (`panel`), separate from `paused`. Time stops
+  for either, and closing one never undoes the other. Buying needs the stall's
+  panel open and baking needs the oven's, so neither can be done from across
+  the room.
+- **Messages:** the engine records what just happened as a small piece of
+  data (`message`) and `src/ui/scene/messageText.ts` puts it into words. The
+  line under the scene shows it and screen readers announce it. This is how
+  arrivals are announced, and it stands in for hints until the tutorials
+  (Phase 4).
+- **Rules added for the world:**
+  - The baker wakes up at home each morning, day one included.
+  - The door keeps the baker in the bakery while the shop is open.
+  - In the evening the till must be counted before the baker can leave, so
+    the report is never skipped. Going to bed starts the next day.
+  - Turning the sign with nothing to bake asks first; a second tap opens the
+    shop anyway. This replaces the Phase 1 morning tip.
+  - Tapping the counter serves whoever has waited longest and can be served.
+    Tapping a customer serves that one.
+  - A customer can be tapped even when their order is not on the shelf. The
+    baker walks over and the message says what is missing.
+  - Market stalls sell only in the morning.
+- **Layout:** Pause sits next to the message line under the scene instead of
+  in a bottom bar, so a whole room fits a 360 × 640 screen. The close button
+  of a panel stays in view while its contents scroll.
+- **Customers walking in and out is decoration.** The store keeps the last
+  few customers who left (`src/store/leaving.ts`) so the scene can show them
+  walking out happy or grumpy. The engine knows nothing about it.
+- **Looks:** six baker looks, picked on the new game form and kept in the
+  game state as `bakerLook`. A customer's look comes from their number, so it
+  needs nothing stored. Stall keepers have fixed looks.
+- **Place backgrounds** are plain colours from `theme.css`, set per place in
+  the scene's stylesheet. They are not in the asset layer yet; that moves
+  with the art upgrade (8.2).
+- **Reduced motion** follows the system setting for now: no bounce, and
+  customers appear in place. The baker still moves, because the position
+  comes from the engine. The in-game setting is Phase 3.3.
+- **Keyboard:** the keyboard-only e2e journey runs on the Chromium projects.
+  Safari only stops on buttons with Tab when a system setting is on, so it is
+  skipped on the WebKit project; the tap journey and axe checks still run
+  there.
+- For the save format (3.1): `baker`, `bakerLook`, `panel`, `message` and
+  `tillCounted` are new parts of the game state.
 
 ### Phase 3 — Saves, difficulty, settings
 
@@ -409,10 +474,10 @@ continue", "three slots stay separate", and one day on each difficulty.
   stored in the save.
 - [ ] **4.2 First-day tutorial.** Guided first day with the guide character,
   who appears in the world and walks with the player.
-- [ ] **4.4 Read aloud.** Optional setting that speaks tutorial text using
-  the browser's built-in speech.
 - [ ] **4.3 Unlock hooks and Help book.** Tutorials start on unlock events;
   replay any seen tutorial from Help.
+- [ ] **4.4 Read aloud.** Optional setting that speaks tutorial text using
+  the browser's built-in speech.
 
 *Tests:* unit tests for the tutorial engine; a content test that every unlock
 has a tutorial and every tutorial step points at a real element; e2e journeys

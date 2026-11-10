@@ -21,7 +21,7 @@ describe('App', () => {
     );
   });
 
-  it('goes from the title, through the new game form, to the first morning', async () => {
+  it('goes from the title, through the new game form, to the first morning at home', async () => {
     const user = userEvent.setup();
     render(<App />);
 
@@ -33,7 +33,8 @@ describe('App', () => {
 
     await user.click(screen.getByRole('button', { name: text.startButton }));
     await user.click(screen.getByRole('button', { name: text.newGame.submit }));
-    expect(screen.getByTestId('morning-screen')).toBeInTheDocument();
+    expect(screen.getByTestId('world')).toHaveAttribute('data-place', 'home');
+    expect(screen.getByTestId('world')).toHaveAttribute('data-phase', 'morning');
     expect(screen.getByTestId('day')).toHaveTextContent('Day 1');
   });
 });

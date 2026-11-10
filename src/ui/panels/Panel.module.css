@@ -1,0 +1,67 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgb(59 35 20 / 60%);
+}
+
+.sheet {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: 100%;
+  max-width: var(--content-width);
+  max-height: 88vh;
+  max-height: 88dvh;
+  padding: var(--space-3) var(--space-3) calc(var(--space-3) + var(--safe-bottom));
+  border-radius: var(--radius) var(--radius) 0 0;
+  background: var(--color-bg);
+  animation: slideUp 200ms ease-out;
+}
+
+.sheet:focus {
+  outline: none;
+}
+
+.sheet > * {
+  flex-shrink: 0;
+}
+
+.sheet > .body {
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.body > * {
+  flex-shrink: 0;
+}
+
+.title {
+  margin: 0;
+  font-size: 1.5rem;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+@media (min-width: 48rem) {
+  .backdrop {
+    align-items: center;
+  }
+
+  .sheet {
+    border-radius: var(--radius);
+  }
+}

@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { BALANCE } from '../../content/balance';
+import { BAKER_LOOKS, DEFAULT_BAKER_LOOK, type BakerLook } from '../../content/looks';
 import { text } from '../../content/text';
 import { DEFAULT_BAKERY_NAME, DEFAULT_PLAYER_NAME } from '../../engine/state';
 import { useGameStore } from '../../store/gameStore';
@@ -7,17 +8,18 @@ import { Button } from '../components/Button';
 import { GameIcon } from '../components/GameIcon';
 import styles from './NewGameScreen.module.css';
 
-/** The player names their bakery and their character, then the first morning starts. */
+/** The player names their bakery and their character and picks a look, then the first morning starts. */
 export function NewGameScreen() {
   const startNewGame = useGameStore((store) => store.startNewGame);
   const goTo = useGameStore((store) => store.goTo);
   const [bakeryName, setBakeryName] = useState(DEFAULT_BAKERY_NAME);
   const [playerName, setPlayerName] = useState(DEFAULT_PLAYER_NAME);
+  const [bakerLook, setBakerLook] = useState<BakerLook>(DEFAULT_BAKER_LOOK);
   const hint = text.newGame.nameHint(BALANCE.nameMaxLength);
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    startNewGame({ bakeryName, playerName });
+    startNewGame({ bakeryName, playerName, bakerLook });
   };
 
   return (
@@ -65,6 +67,25 @@ export function NewGameScreen() {
             {hint}
           </span>
         </div>
+
+        <fieldset className={styles.looks}>
+          <legend className={styles.label}>{text.newGame.lookLegend}</legend>
+          <div className={styles.lookRow}>
+            {BAKER_LOOKS.map((look) => (
+              <label key={look} className={styles.look} data-testid={`look-${look}`}>
+                <input
+                  type="radio"
+                  name="baker-look"
+                  className={styles.lookInput}
+                  value={look}
+                  checked={look === bakerLook}
+                  onChange={() => setBakerLook(look)}
+                />
+                <GameIcon id={look} size="large" />
+              </label>
+            ))}
+          </div>
+        </fieldset>
       </div>
 
       <div className={styles.actions}>

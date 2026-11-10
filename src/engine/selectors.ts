@@ -4,6 +4,8 @@ import { RECIPES, type RecipeId } from '../content/recipes';
 import type { Cents } from './money';
 import type { GameState, Oven } from './state';
 
+export { bakerPoint } from './walk';
+
 export type OvenStage = 'empty' | 'baking' | 'ready' | 'burnt';
 
 export function ovenStage(oven: Oven): OvenStage {

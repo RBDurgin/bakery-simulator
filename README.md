@@ -29,6 +29,9 @@ npm run dev
 
 Playwright builds the game with `VITE_TEST_HOOKS=true`. Only in that build,
 `?seed=42&speed=5` in the URL fixes the random seed and speeds up the clock.
+Locally Playwright reuses a server already running on port 4173, so stop any
+`npm run preview` first: a normal build ignores the test hooks and the
+journeys time out.
 
 The first time you run Playwright locally, install its browsers with
 `npx playwright install chromium webkit`.
@@ -37,11 +40,13 @@ The first time you run Playwright locally, install its browsers with
 
 ```
 src/engine/   Pure game rules (no React, no DOM, no timers)
-src/content/  Game data and player-facing text
+src/content/  Game data (recipes, ingredients, places, looks) and player-facing text
 src/save/     Local storage saves and migrations
 src/store/    State store connecting engine and UI
 src/ui/       React screens and components
-src/assets/   Asset layer: item ids to emoji now, images later
+  scene/      Draws a place: its background, things to tap, and characters
+  panels/     Menu panels that open at a place (stall, oven, report)
+src/assets/   Asset layer: item, character and place ids to emoji now, images later
 src/test/     Shared test setup and helpers
 e2e/          Playwright tests
 ```

@@ -5,7 +5,7 @@ interface GameIconProps {
   id: AssetId;
   /** Hide from screen readers when a visible word next to the icon already says the same. */
   decorative?: boolean;
-  size?: 'medium' | 'large' | 'huge';
+  size?: 'small' | 'medium' | 'large' | 'huge';
 }
 
 /** Renders an asset from the asset layer, as emoji today and an image later. */
