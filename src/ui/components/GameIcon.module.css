@@ -1,0 +1,23 @@
+.icon {
+  display: inline-block;
+  line-height: 1;
+  font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
+}
+
+img.icon {
+  object-fit: contain;
+  width: 1em;
+  height: 1em;
+}
+
+.medium {
+  font-size: 1.5rem;
+}
+
+.large {
+  font-size: 2.5rem;
+}
+
+.huge {
+  font-size: clamp(4rem, 22vw, 6rem);
+}
