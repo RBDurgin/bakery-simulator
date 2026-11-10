@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { BALANCE } from '../content/balance';
+import { MEDIUM } from '../test/fixtures';
 import { cleanName, createGame, DEFAULT_BAKERY_NAME, DEFAULT_PLAYER_NAME } from './state';
 
 describe('createGame', () => {
@@ -10,7 +11,7 @@ describe('createGame', () => {
       playerName: 'Ada',
       day: 1,
       phase: 'morning',
-      money: BALANCE.startingMoney,
+      money: MEDIUM.startingMoney,
       rng: 42,
       reputation: BALANCE.startingReputation,
       ingredients: { flour: 0, sugar: 0, butter: 0, egg: 0 },

@@ -50,18 +50,29 @@
   color-scheme: light;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  :root {
-    --transition-fast: 0ms;
-  }
+/*
+ * Less movement. The app sets data-motion from the Settings screen, or from
+ * the device's own setting when the player has not chosen.
+ */
+:root[data-motion='reduced'] {
+  --transition-fast: 0ms;
+}
 
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
+:root[data-motion='reduced'] *,
+:root[data-motion='reduced'] *::before,
+:root[data-motion='reduced'] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}
+
+/* Text size. Every size in the game is in rem, so the whole game scales. */
+:root[data-text-size='large'] {
+  font-size: 112.5%;
+}
+
+:root[data-text-size='larger'] {
+  font-size: 125%;
 }
 
 *,

@@ -3,13 +3,16 @@ import { useGameStore } from '../../store/gameStore';
 
 /**
  * Drives the engine from animation frames while `running` is true: walking
- * in every phase, and the shop clock while the shop is open. The game pauses
- * itself when the browser tab is hidden.
+ * in every phase, and the shop clock while the shop is open. When the browser
+ * tab is hidden the game pauses itself and saves, because a hidden tab on a
+ * phone may never come back.
  */
 export function useGameClock(running: boolean) {
   useEffect(() => {
     const pauseWhenHidden = () => {
-      if (document.hidden) useGameStore.getState().dispatch({ type: 'pause' });
+      if (!document.hidden) return;
+      useGameStore.getState().dispatch({ type: 'pause' });
+      useGameStore.getState().saveNow();
     };
     document.addEventListener('visibilitychange', pauseWhenHidden);
 

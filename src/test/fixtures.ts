@@ -1,7 +1,11 @@
+import { DIFFICULTIES } from '../content/difficulty';
 import type { IngredientId } from '../content/ingredients';
 import type { PlaceId } from '../content/places';
 import { applyAction, tick, type Action } from '../engine/game';
 import { createGame, type Customer, type GameState } from '../engine/state';
+
+/** The numbers most tests play with: a new game is Medium unless it says otherwise. */
+export const MEDIUM = DIFFICULTIES.medium;
 
 /** The seed used by tests and by the Playwright journey. */
 export const TEST_SEED = 42;

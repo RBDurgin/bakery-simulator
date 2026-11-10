@@ -1,10 +1,9 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { BALANCE } from '../../content/balance';
 import { PLACES, PLACE_IDS } from '../../content/places';
 import { RECIPES } from '../../content/recipes';
-import { at, customer, newGame, openGame, tapThing } from '../../test/fixtures';
+import { at, customer, MEDIUM, newGame, openGame, tapThing } from '../../test/fixtures';
 import { tick } from '../../engine/game';
 import { Scene } from './Scene';
 
@@ -89,7 +88,7 @@ describe('Scene', () => {
       {
         status: 'baking',
         recipeId: 'cookie',
-        elapsedMs: RECIPES.cookie.bakeMs + BALANCE.burnWindowMs,
+        elapsedMs: RECIPES.cookie.bakeMs + MEDIUM.burnWindowMs,
       } as const,
       'Burnt',
     ],

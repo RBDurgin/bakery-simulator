@@ -188,6 +188,8 @@ test('the day can be played with the keyboard alone', async ({ page, browserName
   await page.goto('/?seed=42&speed=5');
   await page.getByTestId('start-button').focus();
   await page.keyboard.press('Enter');
+  await tabTo(page, 'slot-1-new');
+  await page.keyboard.press('Enter');
   await tabTo(page, 'open-bakery-button');
   await page.keyboard.press('Enter');
   await expectPlace(page, 'home');

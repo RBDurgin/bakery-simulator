@@ -1,16 +1,11 @@
 /**
- * Tuning numbers for the core loop. Phase 3.2 turns these into the per-difficulty
- * table; until then the game uses this single set (the planned Medium values).
- * All times are in game milliseconds.
+ * Tuning numbers that are the same on every difficulty. The numbers that
+ * differ between modes live in `difficulty.ts`. Times are in milliseconds on
+ * the shop clock, apart from walking, which is never sped up.
  */
 export const BALANCE = {
-  startingMoney: 6000,
   /** Length of the open phase. */
   dayLengthMs: 180_000,
-  /** How long a ready batch can stay in the oven before it burns. */
-  burnWindowMs: 30_000,
-  /** How long a customer waits before leaving. */
-  customerPatienceMs: 60_000,
   /** The first customer of the day arrives after this long. */
   firstCustomerDelayMs: 4_000,
   /** Later customers arrive after a random time in this range. */

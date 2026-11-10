@@ -12,6 +12,14 @@ export function messageText(game: GameState): string {
   switch (message.id) {
     case 'goodMorning':
       return m.goodMorning(game.playerName);
+    case 'gift':
+      return m.gift(formatCents(message.amount));
+    case 'loan':
+      return m.loan(
+        formatCents(message.amount),
+        formatCents(message.owed),
+        formatCents(message.repayment),
+      );
     case 'arrived':
       return m.arrived[message.place];
     case 'bakingStarted':

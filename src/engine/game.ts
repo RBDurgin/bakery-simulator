@@ -3,7 +3,7 @@ import { INGREDIENTS, INGREDIENT_IDS, type IngredientId } from '../content/ingre
 import { PLACES, SERVING, WAKE_UP, thingById, type ThingJob } from '../content/places';
 import { RECIPES, RECIPE_IDS, type RecipeId } from '../content/recipes';
 import { nextRandom, randomInt } from './rng';
-import { batchesPossible, ovenStage, starsFor } from './selectors';
+import { batchesPossible, canAffordABatch, ovenStage, settingsFor, starsFor } from './selectors';
 import { emptyDayStats, type GameState, type Message, type Target } from './state';
 import { msToNextSpot, walkTo } from './walk';
 
@@ -100,14 +100,83 @@ function closeShop(state: GameState): GameState {
   };
 }
 
-function nextDay(state: GameState): GameState {
+/**
+ * Out of money: a baker who wakes up unable to bake anything gets help. What
+ * kind of help depends on the difficulty.
+ */
+function rescue(state: GameState): GameState {
+  if (canAffordABatch(state)) return state;
+  const help = settingsFor(state).rescue;
+  const money = state.money + help.amount;
+  if (help.kind === 'gift')
+    return { ...state, money, message: { id: 'gift', amount: help.amount } };
+  const owed = state.loan.owed + help.amount + help.fee;
   return {
+    ...state,
+    money,
+    loan: { ...state.loan, owed },
+    message: { id: 'loan', amount: help.amount, owed, repayment: help.repayment },
+  };
+}
+
+function nextDay(state: GameState): GameState {
+  return rescue({
     ...state,
     phase: 'morning',
     day: state.day + 1,
     clockMs: 0,
     today: emptyDayStats(),
     tillCounted: false,
+    baker: { ...WAKE_UP, walk: null },
+    message: { id: 'goodMorning' },
+  });
+}
+
+/**
+ * Counting the till pays back a part of any loan. When there is not enough
+ * money the repayment is missed, and on Hard too many misses end the run.
+ */
+function repayLoan(state: GameState): GameState {
+  const help = settingsFor(state).rescue;
+  if (help.kind !== 'loan' || state.loan.owed <= 0) return state;
+  const due = Math.min(help.repayment, state.loan.owed);
+  if (state.money < due) {
+    const missed = state.loan.missed + 1;
+    return {
+      ...state,
+      loan: { ...state.loan, missed },
+      today: { ...state.today, missedRepayment: true },
+      ended: help.maxMissed !== null && missed >= help.maxMissed,
+    };
+  }
+  const owed = state.loan.owed - due;
+  return {
+    ...state,
+    money: state.money - due,
+    loan: { owed, missed: owed === 0 ? 0 : state.loan.missed },
+    today: { ...state.today, repaid: due },
+  };
+}
+
+/**
+ * A saved game picked up again: the baker stands still, nothing is open and
+ * nothing is paused. A shop that was open starts that day's morning again,
+ * at home, with the money and ingredients it had when it opened.
+ */
+export function resumeGame(state: GameState): GameState {
+  const calm: GameState = {
+    ...state,
+    paused: false,
+    panel: null,
+    baker: { ...state.baker, walk: null },
+  };
+  if (state.phase !== 'open') return calm;
+  return {
+    ...calm,
+    phase: 'morning',
+    clockMs: 0,
+    customers: [],
+    oven: { status: 'empty' },
     baker: { ...WAKE_UP, walk: null },
     message: { id: 'goodMorning' },
   };
@@ -143,7 +212,7 @@ function atOven(state: GameState): GameState {
   if (state.oven.status === 'empty') return { ...state, panel: { type: 'oven' }, message: null };
   const { recipeId } = state.oven;
   const { batchSize } = RECIPES[recipeId];
-  const stage = ovenStage(state.oven);
+  const stage = ovenStage(state);
   if (stage === 'ready') {
     return {
       ...state,
@@ -196,7 +265,14 @@ function atCounter(state: GameState): GameState {
 
 function atTill(state: GameState): GameState {
   if (state.phase !== 'evening') return say(state, { id: 'tillLater' });
-  return { ...state, panel: { type: 'report' }, tillCounted: true, message: null };
+  // The loan is paid once an evening, the first time the till is counted.
+  const counted = state.tillCounted ? state : repayLoan(state);
+  return {
+    ...counted,
+    panel: counted.ended ? null : { type: 'report' },
+    tillCounted: true,
+    message: null,
+  };
 }
 
 function atBed(state: GameState): GameState {
@@ -248,6 +324,7 @@ function tap(state: GameState, target: Target): GameState {
 
 /** The only way to change game state, apart from `tick`. Actions that are not allowed change nothing. */
 export function applyAction(state: GameState, action: Action): GameState {
+  if (state.ended) return state;
   switch (action.type) {
     case 'pause':
       return state.phase === 'open' && !state.paused ? { ...state, paused: true } : state;
@@ -270,24 +347,28 @@ export function applyAction(state: GameState, action: Action): GameState {
   }
 }
 
-/** Moves time forward by `ms`, with nothing arriving or finishing on the way. */
-function advance(state: GameState, ms: number): GameState {
+/**
+ * Moves time forward with nothing arriving or finishing on the way: `ms` for
+ * the baker's walk, `shopMs` on the shop clock.
+ */
+function advance(state: GameState, ms: number, shopMs: number): GameState {
   const { walk } = state.baker;
   const walked = walk
     ? { ...state, baker: { ...state.baker, walk: { ...walk, elapsedMs: walk.elapsedMs + ms } } }
     : state;
   if (walked.phase !== 'open') return walked;
 
-  const waiting = walked.customers.map((c) => ({ ...c, waitedMs: c.waitedMs + ms }));
-  const staying = waiting.filter((c) => c.waitedMs < BALANCE.customerPatienceMs);
+  const patience = settingsFor(walked).customerPatienceMs;
+  const waiting = walked.customers.map((c) => ({ ...c, waitedMs: c.waitedMs + shopMs }));
+  const staying = waiting.filter((c) => c.waitedMs < patience);
   const lost = waiting.length - staying.length;
   return {
     ...walked,
-    clockMs: walked.clockMs + ms,
-    nextCustomerInMs: walked.nextCustomerInMs - ms,
+    clockMs: walked.clockMs + shopMs,
+    nextCustomerInMs: walked.nextCustomerInMs - shopMs,
     oven:
       walked.oven.status === 'baking'
-        ? { ...walked.oven, elapsedMs: walked.oven.elapsedMs + ms }
+        ? { ...walked.oven, elapsedMs: walked.oven.elapsedMs + shopMs }
         : walked.oven,
     customers: staying,
     reputation: clampReputation(walked.reputation + lost * BALANCE.reputationPerLostCustomer),
@@ -334,24 +415,34 @@ function customerArrives(state: GameState): GameState {
 }
 
 /**
- * Advances game time. Walking takes time in every phase; the shop clock runs
- * only while the shop is open. Time stops while the game is paused or a panel
- * is open. The result is the same whether time passes in one big step or many
- * small ones.
+ * Advances game time by `ms`. Walking takes time in every phase. The shop
+ * clock runs only while the shop is open, at the speed of the difficulty
+ * mode: baking, customers and closing time all follow it. Time stops while
+ * the game is paused or a panel is open. The result is the same whether time
+ * passes in one big step or many small ones.
  */
 export function tick(state: GameState, ms: number): GameState {
   if (!(ms > 0)) return state;
+  const speed = settingsFor(state).clockSpeed;
   let current = state;
   let remaining = ms;
-  while (remaining > 0 && !current.paused && !current.panel) {
+  while (remaining > 0 && !current.paused && !current.panel && !current.ended) {
     const open = current.phase === 'open';
     if (!open && !current.baker.walk) break;
     let step = Math.min(remaining, msToNextSpot(current.baker));
+    let shopMs = 0;
     if (open) {
+      // Stop exactly on the next thing the shop clock brings, so nothing is skipped.
       const untilClose = BALANCE.dayLengthMs - current.clockMs;
-      step = Math.min(step, untilClose, Math.max(0, current.nextCustomerInMs));
+      const untilEvent = Math.min(untilClose, Math.max(0, current.nextCustomerInMs));
+      if (untilEvent <= step * speed) {
+        shopMs = untilEvent;
+        step = untilEvent / speed;
+      } else {
+        shopMs = step * speed;
+      }
     }
-    current = advance(current, step);
+    current = advance(current, step, shopMs);
     remaining -= step;
 
     if (current.baker.walk && msToNextSpot(current.baker) <= 0) current = reachSpot(current);

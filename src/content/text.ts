@@ -8,11 +8,36 @@ export const text = {
   gameTitle: 'Bakery Simulator',
   tagline: 'Bake treats, count your coins, and grow your shop.',
   startButton: 'Start baking',
+  settingsButton: 'Settings',
+
+  slots: {
+    heading: 'Your bakeries',
+    intro: 'Pick a bakery to play, or start a new one.',
+    slot: (slot: number) => `Save ${slot}`,
+    empty: 'Empty',
+    newGame: 'New bakery',
+    newGameLabel: (slot: number) => `New bakery in save ${slot}`,
+    summary: (day: number, money: string, difficulty: string) =>
+      `Day ${day} · ${money} · ${difficulty}`,
+    play: 'Play',
+    playLabel: (bakeryName: string) => `Play ${bakeryName}`,
+    delete: 'Delete',
+    deleteLabel: (bakeryName: string) => `Delete ${bakeryName}`,
+    damaged: 'Sorry, this save is broken and cannot be opened.',
+    damagedName: 'the broken save',
+    confirmHeading: (bakeryName: string) => `Delete ${bakeryName}?`,
+    confirmBody: 'It will be gone for good.',
+    confirmDelete: 'Yes, delete it',
+    keep: 'No, keep it',
+    back: 'Back',
+  },
 
   newGame: {
     heading: 'Your new bakery',
     intro: 'Pick a name for your bakery and for you.',
     lookLegend: 'Pick your baker',
+    difficultyLegend: 'How hard should it be?',
+    startsWith: (money: string) => `You start with ${money}.`,
     bakeryNameLabel: 'Bakery name',
     playerNameLabel: 'Your name',
     nameHint: (max: number) => `Up to ${max} letters.`,
@@ -37,7 +62,9 @@ export const text = {
     closesIn: (time: string) => `Shop closes in ${time}`,
     clockLabel: 'Time left today',
     pause: 'Pause',
+    menu: 'Menu',
     walking: 'Walking…',
+    saveFailed: 'Your game could not be saved on this device. You can keep playing.',
   },
 
   things: {
@@ -57,6 +84,10 @@ export const text = {
   /** What the line under the scene says after each job. One or two short sentences. */
   messages: {
     goodMorning: (playerName: string) => `Good morning, ${playerName}! Tap the door to go out.`,
+    gift: (amount: string) =>
+      `Good morning! Grandma sent you ${amount} to help. Her tip: only buy what you can sell.`,
+    loan: (amount: string, owed: string, repayment: string) =>
+      `Good morning! The bank lent you ${amount}. You owe ${owed} and pay back ${repayment} each evening.`,
     arrived: {
       home: 'You are at home.',
       street: 'You are on the street.',
@@ -118,6 +149,35 @@ export const text = {
     body: 'Take your time. The clock is stopped.',
     resume: 'Keep playing',
     closeShop: 'Close the shop for today',
+    settings: 'Settings',
+    quit: 'Leave the game',
+    quitNote: 'If you leave now, today starts again from the morning.',
+  },
+
+  /** The same dialog outside shop hours, when there is no clock to stop. */
+  menu: {
+    heading: 'Menu',
+    body: 'Your game is saved when you leave.',
+    quit: 'Save and leave',
+  },
+
+  settings: {
+    heading: 'Settings',
+    sound: 'Sound',
+    soundHint: 'Little sounds when something happens.',
+    motion: 'Less movement',
+    motionHint: 'Characters glide and do not bounce.',
+    textSize: 'Text size',
+    sizes: { normal: 'Normal', large: 'Big', larger: 'Bigger' },
+    done: 'Done',
+  },
+
+  gameOver: {
+    heading: 'The bakery has to close',
+    body: (missed: number) =>
+      `You missed ${missed} loan payments, so the bank closed the bakery. Every baker has hard days!`,
+    retry: 'Try today again',
+    quit: 'Back to the start',
   },
 
   evening: {
@@ -141,6 +201,14 @@ export const text = {
     happyCustomers: 'Happy customers',
     lostCustomers: 'Customers who left',
     starsHeading: 'Your stars',
+    loanHeading: 'Bank loan',
+    repaid: 'Paid back today',
+    owed: 'Still to pay',
+    loanExplained: 'Paying back a loan is not a cost, so it does not change your profit.',
+    loanDone: 'The loan is all paid back. Well done!',
+    missed: 'You did not have enough money to pay today. Try again tomorrow.',
+    missedCount: (missed: number, max: number) =>
+      `You did not have enough money to pay today. That is ${missed} of ${max} misses.`,
     done: 'Done',
   },
 } as const;

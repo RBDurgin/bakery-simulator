@@ -47,9 +47,16 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium webkit
       - run: npm run e2e
+      # Screenshot tests need baselines made on this same system. Until the
+      # "Visual baselines" workflow has made them, there is nothing to compare.
+      - name: Visual tests
+        if: hashFiles('e2e/__screenshots__/**') != ''
+        run: npm run e2e:visual
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: playwright-report
-          path: playwright-report/
+          path: |
+            playwright-report/
+            test-results/
           retention-days: 7

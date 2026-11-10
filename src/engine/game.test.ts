@@ -7,6 +7,7 @@ import {
   customer,
   eveningGame,
   goTo,
+  MEDIUM,
   newGame,
   openGame,
   play,
@@ -111,7 +112,7 @@ describe('buying ingredients', () => {
 
   it('takes the money, adds the stock and counts the spending', () => {
     const game = play(stallGame('butter'), buy('butter'));
-    expect(game.money).toBe(BALANCE.startingMoney - 200);
+    expect(game.money).toBe(MEDIUM.startingMoney - 200);
     expect(game.ingredients.butter).toBe(1);
     expect(game.today.spent).toBe(200);
   });
@@ -235,7 +236,7 @@ describe('the oven', () => {
   });
 
   it('a burnt batch is wasted', () => {
-    const burnt = tick(bake(openGame(), 'cookie'), RECIPES.cookie.bakeMs + BALANCE.burnWindowMs);
+    const burnt = tick(bake(openGame(), 'cookie'), RECIPES.cookie.bakeMs + MEDIUM.burnWindowMs);
     const game = tapThing(burnt, 'oven');
     expect(game.shelf.cookie).toBe(0);
     expect(game.oven).toEqual({ status: 'empty' });
@@ -288,7 +289,7 @@ describe('serving customers', () => {
   it('cannot serve what is not on the shelf', () => {
     const game = tapCustomer(waiting(), 1);
     expect(game.customers).toHaveLength(2);
-    expect(game.money).toBe(BALANCE.startingMoney);
+    expect(game.money).toBe(MEDIUM.startingMoney);
     expect(game.message).toEqual({ id: 'noStock', recipeId: 'muffin' });
   });
 
@@ -300,7 +301,7 @@ describe('serving customers', () => {
   it('is kind when the customer leaves while the baker is on the way', () => {
     const before = waiting({
       ...at('bakery', 'oven'),
-      customers: [customer(1, 'cookie', BALANCE.customerPatienceMs - 100)],
+      customers: [customer(1, 'cookie', MEDIUM.customerPatienceMs - 100)],
     });
     const game = arrive(tapCustomer(before, 1));
     expect(game.customers).toEqual([]);
@@ -476,7 +477,7 @@ describe('tick', () => {
     const game = tick(
       openGame({
         customers: [
-          customer(1, 'cookie', BALANCE.customerPatienceMs - 1000),
+          customer(1, 'cookie', MEDIUM.customerPatienceMs - 1000),
           customer(2, 'bread', 0),
         ],
       }),
@@ -489,7 +490,7 @@ describe('tick', () => {
 
   it('reputation never drops below zero', () => {
     const game = tick(
-      openGame({ reputation: 1, customers: [customer(1, 'cookie', BALANCE.customerPatienceMs)] }),
+      openGame({ reputation: 1, customers: [customer(1, 'cookie', MEDIUM.customerPatienceMs)] }),
       1,
     );
     expect(game.reputation).toBe(0);
@@ -575,13 +576,13 @@ describe('a whole day', () => {
     expect(game.today.spent).toBe(400);
     expect(game.today.wasted.cookie).toBe(6 - sold);
     expect(profit(game)).toBe(sold * 150 - 400);
-    expect(game.money).toBe(BALANCE.startingMoney + profit(game));
+    expect(game.money).toBe(MEDIUM.startingMoney + profit(game));
 
     // Evening: count the till, walk home, go to bed.
     game = play(goTo(game, 'till'), { type: 'closePanel' });
     game = goTo(goTo(goTo(game, 'door'), 'home'), 'bed');
     expect(game).toMatchObject({ phase: 'morning', day: 2 });
-    expect(game.money).toBe(BALANCE.startingMoney + sold * 150 - 400);
+    expect(game.money).toBe(MEDIUM.startingMoney + sold * 150 - 400);
   });
 
   it('seed 42 sends the customers the Playwright journey expects', () => {
